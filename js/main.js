@@ -112,7 +112,7 @@ function syncChrome() {
   ui.updateHand(m.playerHand.hand, game.selectedHandIndex, m.playerQi);
   if (game.phase === Phase.MATCH_OVER) {
     ui.showResult(m.outcome);
-  } else {
+  } else if (ui.els.title.hidden === false || ui.els.hud.hidden) {
     ui.showMatch();
   }
 }
@@ -160,3 +160,7 @@ function frame(now) {
 ui.showTitle();
 draw();
 requestAnimationFrame(frame);
+
+// Debug/testing hook
+window.__game = game;
+window.__ui = ui;

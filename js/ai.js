@@ -5,8 +5,8 @@ import { LANE, LANE_CENTER_X, SIDE, canDeployAt } from "./board.js";
 
 export function createAIState() {
   return {
-    thinkTimer: 1.2,
-    reserveQi: 4,
+    thinkTimer: 3.0,
+    reserveQi: 6,
   };
 }
 
@@ -19,18 +19,27 @@ export function updateAI(match, dt, deployFn) {
   const ai = match.ai;
   ai.thinkTimer -= dt;
   if (ai.thinkTimer > 0) return;
-  ai.thinkTimer = 0.7 + Math.random() * 1.1;
+  // Keep the AI as a light punching bag: slow early, modest later.
+  ai.thinkTimer = match.time < 40 ? 2.2 + Math.random() * 1.6 : 1.3 + Math.random() * 1.2;
 
-  if (match.enemyQi < ai.reserveQi && match.enemyQi < 6) {
-    // Hold a bit unless we can afford something cheap
+  if (match.enemyQi < ai.reserveQi && match.enemyQi < 7) {
     const cheap = affordableCards(match.enemyHand.hand, match.enemyQi).filter(
       (c) => getCardDef(c).cost <= 3
     );
     if (!cheap.length) return;
   }
 
-  const affordable = affordableCards(match.enemyHand.hand, match.enemyQi);
+  const affordable = affordableCards(match.enemyHand.hand, match.enemyQi).filter((id) => {
+    if (match.time < 35 && (id === "guan" || id === "zhuge" || id === "catapult" || id === "zhang")) {
+      return false;
+    }
+    return true;
+  });
   if (!affordable.length) return;
+
+  // Cap concurrent enemy pressure.
+  const enemyCount = match.units.filter((u) => u.alive && u.side === SIDE.ENEMY).length;
+  if (enemyCount >= 4) return;
 
   const lane = chooseLane(match);
   const cardId = chooseCard(match, affordable, lane);

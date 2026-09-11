@@ -22,13 +22,15 @@ export function createUI(root) {
     btnTitle: root.querySelector("#btn-title"),
   };
 
-  return {
+  let lastHandKey = "";
+  const api = {
     els,
     showTitle() {
       els.title.hidden = false;
       els.result.hidden = true;
       els.hud.hidden = true;
       els.matchMeta.hidden = true;
+      lastHandKey = "";
     },
     showMatch() {
       els.title.hidden = true;
@@ -68,6 +70,19 @@ export function createUI(root) {
       els.sudden.hidden = !sudden;
     },
     updateHand(handIds, selectedIndex, qi) {
+      const key = `${handIds.join(",")}|${selectedIndex}|${Math.floor(qi)}`;
+      if (key === lastHandKey && els.hand.children.length === handIds.length) {
+        handIds.forEach((id, index) => {
+          const def = getCardDef(id);
+          const btn = els.hand.children[index];
+          if (!btn) return;
+          btn.classList.toggle("unaffordable", def.cost > qi);
+          btn.classList.toggle("selected", selectedIndex === index);
+          btn.setAttribute("aria-selected", selectedIndex === index ? "true" : "false");
+        });
+        return;
+      }
+      lastHandKey = key;
       els.hand.innerHTML = "";
       handIds.forEach((id, index) => {
         const def = getCardDef(id);
@@ -85,7 +100,7 @@ export function createUI(root) {
           <span class="card-role">${def.nameEn} · ${def.role}</span>
         `;
         btn.addEventListener("click", () => {
-          els.onSelectCard?.(index);
+          api.onSelectCard?.(index);
         });
         els.hand.appendChild(btn);
       });
@@ -96,6 +111,8 @@ export function createUI(root) {
     },
     onSelectCard: null,
   };
+
+  return api;
 }
 
 export function formatOutcomeFromCamps(playerMain, enemyMain) {
