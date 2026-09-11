@@ -4,6 +4,7 @@
 **Genre:** Real-time lane skirmish (Clash Royale–inspired)  
 **Theme:** Romance of the Three Kingdoms (三国演义)  
 **Platform:** Single HTML page + vanilla JavaScript (2D canvas)  
+**Mode:** Player vs Computer only（玩家 vs 電腦）  
 **Audience:** Prototype / playable proof of concept
 
 ---
@@ -12,9 +13,11 @@
 
 Ship the smallest fun loop that proves the fantasy:
 
-> Deploy Three Kingdoms heroes onto a simple 2D battlefield, spend a regenerating resource, fight automatic battles in lanes, and destroy the enemy main camp.
+> Deploy Three Kingdoms heroes onto a simple 2D battlefield, spend a regenerating resource, fight automatic battles in lanes against a computer opponent, and destroy the enemy main camp.
 
-This version is intentionally **not** a full Clash Royale clone. It is a vertical slice with one mode, one map, a tiny roster, and local play only.
+This version is intentionally **not** a full Clash Royale clone. It is a vertical slice with **one local PvE mode** (human vs AI), one map, and a tiny roster.
+
+**Confirmed for v0.1:** 唔需要網上對戰 / matchmaking / 真人對戰。只要玩家可以同電腦打一場即可。
 
 ---
 
@@ -22,7 +25,8 @@ This version is intentionally **not** a full Clash Royale clone. It is a vertica
 
 | Out of scope | Why |
 |---|---|
-| Online multiplayer / matchmaking | Too heavy for first prototype |
+| Online multiplayer / matchmaking / PvP | v0.1 只做玩家 vs 電腦 |
+| Local hot-seat two-player | Can wait until a later version |
 | Card collection, levels, upgrades, shop | Meta systems come later |
 | Full 3D or isometric art | Keep rendering simple |
 | Complex pathfinding / free movement | Use fixed lanes |
@@ -200,7 +204,9 @@ When both Outposts on one side are destroyed, Main Camp becomes more exposed (no
 
 ---
 
-## 10. AI opponent (v0.1)
+## 10. AI opponent (v0.1) — the only opponent
+
+v0.1 只有呢一種對戰方式：**玩家（人手） vs 電腦 AI**。冇伺服器、冇房間碼、冇網路同步。
 
 Very dumb but playable:
 
@@ -283,7 +289,7 @@ v0.1 is done when a player can:
 2. See a 2-lane board with camps and outposts.
 3. Spend regenerating Qi to deploy at least the 8 starter cards.
 4. Watch units path across the bridge and fight automatically.
-5. Destroy structures and win/lose against the basic AI.
+5. Destroy structures and win/lose against the basic AI (no online play required).
 6. Restart the match without refreshing the page.
 
 Bonus (stretch, not required):
@@ -319,13 +325,13 @@ Bonus (stretch, not required):
 
 - **v0.2:** faction select (Wei / Shu / Wu), unique starter decks  
 - **v0.3:** 1–2 spell cards (e.g. Fire Attack, Ambush)  
-- **v0.4:** local hot-seat or simple P2P  
+- **v0.4:** optional local hot-seat or simple P2P (still not required for the prototype)  
 - **v1.0:** progression / card levels / more authentic map skins  
 
-These are placeholders and do not expand v0.1 scope.
+These are placeholders and do not expand v0.1 scope. Online multiplayer remains out of scope unless explicitly requested later.
 
 ---
 
 ## 17. One-line summary
 
-**v0.1 is a single-page, 2-lane, Qi-driven Three Kingdoms skirmish where a fixed 8-card deck fights a dumb AI to destroy the enemy Main Camp.**
+**v0.1 is a single-page, offline, player-vs-computer, 2-lane Qi-driven Three Kingdoms skirmish where a fixed 8-card deck fights a dumb AI to destroy the enemy Main Camp.**
