@@ -2,6 +2,9 @@
 
 Prototype of a Clash Royale–like skirmish game themed around the Romance of the Three Kingdoms (三国演义).
 
+## Page
+https://mangohk.github.io/3cntywar/
+
 ## Play
 
 Open locally with any static server (ES modules require HTTP):
