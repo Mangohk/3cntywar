@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+    <title>3cntywar — Three Countries War</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="top-bar">
+        <div class="brand">
+          <span class="brand-mark">叁</span>
+          <div>
+            <h1>3cntywar</h1>
+            <p class="tagline">三国战场 · Player vs Computer</p>
+          </div>
+        </div>
+        <div class="match-meta" id="match-meta" hidden>
+          <div class="timer" id="match-timer">0:00</div>
+          <div class="sudden-death" id="sudden-death" hidden>Sudden Death</div>
+        </div>
+      </header>
+
+      <main class="stage">
+        <canvas id="game-canvas" width="420" height="720" aria-label="Battlefield"></canvas>
+
+        <section id="title-screen" class="overlay panel">
+          <div class="panel-inner">
+            <p class="eyebrow">Romance of the Three Kingdoms</p>
+            <h2>Three Countries War</h2>
+            <p class="lede">
+              Command Shu generals across two lanes. Spend regenerating Qi, smash Wei outposts,
+              and raze the enemy Main Camp.
+            </p>
+            <ul class="faction-row">
+              <li><span class="dot shu"></span> You — Shu</li>
+              <li><span class="dot wei"></span> AI — Wei</li>
+            </ul>
+            <button type="button" id="btn-start" class="btn primary">Start Battle</button>
+          </div>
+        </section>
+
+        <section id="result-screen" class="overlay panel" hidden>
+          <div class="panel-inner">
+            <p class="eyebrow" id="result-eyebrow">Match Over</p>
+            <h2 id="result-title">Victory</h2>
+            <p class="lede" id="result-detail">The enemy Main Camp has fallen.</p>
+            <div class="btn-row">
+              <button type="button" id="btn-retry" class="btn primary">Fight Again</button>
+              <button type="button" id="btn-title" class="btn ghost">Back to Title</button>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer class="hud" id="hud" hidden>
+        <div class="qi-block">
+          <div class="qi-label">气 Qi <span id="qi-value">5</span>/10</div>
+          <div class="qi-track" aria-hidden="true">
+            <div class="qi-fill" id="qi-fill"></div>
+          </div>
+        </div>
+        <div class="hand" id="hand" role="listbox" aria-label="Card hand"></div>
+        <p class="hint" id="deploy-hint">Select a card, then tap your half of a lane.</p>
+      </footer>
+    </div>
+
+    <script type="module" src="js/main.js"></script>
+  </body>
+</html>
