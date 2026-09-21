@@ -187,16 +187,12 @@ When both Outposts on one side are destroyed, Main Camp becomes more exposed (no
 
 ## 9. Controls & UX
 
-### Desktop (primary for prototype)
+### Desktop & mobile
 
-- Click a card in the hand → selected.
-- Click / drag on valid deploy cell in a lane → spawn unit, spend Qi, cycle card.
+- Drag a card from the hand onto a valid deploy cell in a lane → spawn unit, spend Qi, cycle card.
+- A floating card ghost + board preview mark the drop point while dragging.
 - Invalid deploy flashes red briefly.
-- Esc / click elsewhere cancels selection.
-
-### Mobile (nice-to-have)
-
-- Tap card, tap lane position. Same rules.
+- Esc cancels an in-progress drag.
 
 ### HUD
 
