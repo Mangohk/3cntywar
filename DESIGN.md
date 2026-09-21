@@ -104,16 +104,16 @@ For v0.1, the player always plays as **Shu**, the AI as **Wei**. (Faction select
 
 Keep costs in a Clash Royale–like 1–6 range. **Qi** replaces elixir.
 
-| Card | Cost | Role | Notes |
-|---|---:|---|---|
-| Militia (步兵) | 2 | Swarm / cheap tanklet | Melee, low HP, low damage |
-| Crossbowmen (弓手) | 3 | Ranged DPS | Targets nearest enemy in lane |
-| Cavalry (骑兵) | 4 | Fast melee | High speed, medium HP |
-| Spearman (枪兵) | 3 | Anti-cavalry melee | Bonus damage vs Cavalry |
-| Zhuge Liang (诸葛亮) | 5 | Support / area | Slow projectile or small AoE “fire attack” |
-| Guan Yu (关羽) | 5 | Elite melee | High HP / high damage single target |
-| Zhang Fei (张飞) | 4 | Bruiser | Splash melee (small radius) |
-| Catapult (投石车) | 6 | Siege | Prefer buildings; slow, long range |
+| Card | Cost | Count | Role | Notes |
+|---|---:|---:|---|---|
+| Militia (步兵) | 2 | 3 | Swarm / cheap tanklet | Melee, low HP, low damage |
+| Crossbowmen (弓手) | 3 | 2 | Ranged DPS | Targets nearest enemy in lane |
+| Cavalry (骑兵) | 4 | 1 | Fast melee | High speed, medium HP |
+| Spearman (枪兵) | 3 | 2 | Anti-cavalry melee | Bonus damage vs Cavalry |
+| Zhuge Liang (诸葛亮) | 5 | 1 | Support / area | Slow projectile or small AoE “fire attack” |
+| Guan Yu (关羽) | 5 | 1 | Elite melee | High HP / high damage single target |
+| Zhang Fei (张飞) | 4 | 1 | Bruiser | Splash melee (small radius) |
+| Catapult (投石车) | 6 | 1 | Siege | Prefer buildings; slow, long range |
 
 **Deck rule (v0.1):** fixed starter deck of these 8. No customization UI yet.
 
@@ -128,7 +128,7 @@ Use a shared schema; tune in playtests:
 
 ```
 {
-  id, name, cost, role,
+  id, name, cost, role, count,
   hp, damage, attackSpeedSec,
   range, sightRange, moveSpeed,
   targetPreference: "any" | "buildings" | "troops",
@@ -137,7 +137,9 @@ Use a shared schema; tune in playtests:
 }
 ```
 
-Exact numbers live in `data/cards.js` and are expected to change often.
+`count` (≥ 1) is how many units one card deploy spawns near the drop point (Clash Royale Archers / Skeletons style). Elites stay at 1; swarm / ranged pairs use 2–3. One Qi spend and one hand cycle still happen once per play.
+
+Exact numbers live in `js/cards.js` and are expected to change often.
 
 ---
 
@@ -189,7 +191,7 @@ When both Outposts on one side are destroyed, Main Camp becomes more exposed (no
 
 ### Desktop & mobile
 
-- Drag a card from the hand onto a valid deploy cell in a lane → spawn unit, spend Qi, cycle card.
+- Drag a card from the hand onto a valid deploy cell in a lane → spawn `count` units near the drop (small offsets, same lane), spend Qi once, cycle card once.
 - A floating card ghost + board preview mark the drop point while dragging.
 - Invalid deploy flashes red briefly.
 - Esc cancels an in-progress drag.

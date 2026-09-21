@@ -16,6 +16,7 @@ export const MATCH_TIME_LIMIT = 180;
  * @property {string} nameEn
  * @property {number} cost
  * @property {string} role
+ * @property {number} count how many units spawn on one deploy (≥ 1)
  * @property {number} hp
  * @property {number} damage
  * @property {number} attackSpeedSec
@@ -37,6 +38,7 @@ export const CARD_DEFS = [
     nameEn: "Militia",
     cost: 2,
     role: "Swarm",
+    count: 3,
     hp: 220,
     damage: 42,
     attackSpeedSec: 1.15,
@@ -53,6 +55,7 @@ export const CARD_DEFS = [
     nameEn: "Crossbowmen",
     cost: 3,
     role: "Ranged",
+    count: 2,
     hp: 160,
     damage: 48,
     attackSpeedSec: 0.95,
@@ -69,6 +72,7 @@ export const CARD_DEFS = [
     nameEn: "Cavalry",
     cost: 4,
     role: "Fast melee",
+    count: 1,
     hp: 340,
     damage: 72,
     attackSpeedSec: 1.05,
@@ -86,6 +90,7 @@ export const CARD_DEFS = [
     nameEn: "Spearman",
     cost: 3,
     role: "Anti-cavalry",
+    count: 2,
     hp: 300,
     damage: 58,
     attackSpeedSec: 1.15,
@@ -103,6 +108,7 @@ export const CARD_DEFS = [
     nameEn: "Zhuge Liang",
     cost: 5,
     role: "Support AoE",
+    count: 1,
     hp: 240,
     damage: 78,
     attackSpeedSec: 1.45,
@@ -120,6 +126,7 @@ export const CARD_DEFS = [
     nameEn: "Guan Yu",
     cost: 5,
     role: "Elite melee",
+    count: 1,
     hp: 780,
     damage: 125,
     attackSpeedSec: 1.25,
@@ -136,6 +143,7 @@ export const CARD_DEFS = [
     nameEn: "Zhang Fei",
     cost: 4,
     role: "Bruiser splash",
+    count: 1,
     hp: 560,
     damage: 95,
     attackSpeedSec: 1.35,
@@ -153,6 +161,7 @@ export const CARD_DEFS = [
     nameEn: "Catapult",
     cost: 6,
     role: "Siege",
+    count: 1,
     hp: 320,
     damage: 165,
     attackSpeedSec: 2.1,

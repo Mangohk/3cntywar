@@ -16,7 +16,7 @@ import { SIDE, canDeployAt } from "./board.js";
 import {
   createBuildings,
   resetEntityIds,
-  spawnUnit,
+  spawnCardUnits,
   updateProjectile,
   updateUnitMovement,
 } from "./entities.js";
@@ -102,7 +102,7 @@ export function tryDeploy(game, side, x, y, handIndex = null) {
 
   match[qiKey] -= def.cost;
   playCardFromHand(handState, idx);
-  match.units.push(spawnUnit(cardId, side, x, y));
+  match.units.push(...spawnCardUnits(cardId, side, x, y));
 
   if (side === SIDE.PLAYER) {
     game.selectedHandIndex = null;

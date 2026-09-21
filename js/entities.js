@@ -4,12 +4,19 @@ import { getCardDef } from "./cards.js";
 import {
   LANE_CENTER_X,
   SIDE,
+  clamp,
+  clampToLane,
   constrainCrossingX,
   createBuildingBlueprints,
   laneFromX,
 } from "./board.js";
 
 let nextEntityId = 1;
+
+/** Horizontal spacing between multi-spawn units (normalized board units). */
+const DEPLOY_SPACING_X = 0.034;
+/** Tiny vertical stagger so stacked troops stay readable. */
+const DEPLOY_SPACING_Y = 0.01;
 
 export function resetEntityIds() {
   nextEntityId = 1;
@@ -62,6 +69,34 @@ export function spawnUnit(cardId, side, x, y) {
     targetId: null,
     facing: side === SIDE.PLAYER ? 1 : -1,
   };
+}
+
+/**
+ * Spawn `def.count` units near the drop point with small offsets (CR Archers / Skeletons style).
+ * One card play → N units; caller still spends Qi / cycles hand once.
+ * @param {string} cardId
+ * @param {'player'|'enemy'} side
+ * @param {number} x
+ * @param {number} y
+ * @returns {ReturnType<typeof spawnUnit>[]}
+ */
+export function spawnCardUnits(cardId, side, x, y) {
+  const def = getCardDef(cardId);
+  const count = Math.max(1, def.count | 0);
+  const lane = laneFromX(x);
+  const mid = (count - 1) / 2;
+  const units = [];
+
+  for (let i = 0; i < count; i += 1) {
+    const unit = spawnUnit(cardId, side, x, y);
+    const ox = (i - mid) * DEPLOY_SPACING_X;
+    const oy = (i - mid) * DEPLOY_SPACING_Y * 0.45;
+    unit.x = clampToLane(unit.x + ox, lane);
+    unit.y = clamp(unit.y + oy, 0.02, 0.98);
+    unit.x = constrainCrossingX(unit.x, lane, unit.y);
+    units.push(unit);
+  }
+  return units;
 }
 
 export function spawnProjectile(from, to, damage, splashRadius = 0, color = "#ffe08a") {
