@@ -20,7 +20,7 @@ const ui = createUI(root);
 const game = createGame();
 
 const BOARD_W = 420;
-const BOARD_H = 720;
+const BOARD_H = 966; // width:height = 1:2.3
 const BOARD_ASPECT = BOARD_W / BOARD_H;
 const HINT_IDLE = "Drag a card onto your half of a lane to deploy.";
 
