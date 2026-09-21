@@ -19,6 +19,8 @@ Or open via any Live Server / `npx serve`.
 
 **Controls:** select a card in the hand, then click/tap your half of a lane to deploy. Esc cancels selection.
 
+The UI is locked to the viewport (`100dvh`) and scales the board to fit phones (including short iPhone SE heights) without page scrolling.
+
 ## Docs
 
 - [DESIGN.md](./DESIGN.md) — v0.1 design document
