@@ -17,6 +17,10 @@
   --shadow: 0 18px 40px rgba(26, 23, 20, 0.28);
   --font-display: "Songti SC", "Noto Serif SC", "STSong", "Times New Roman", serif;
   --font-body: "PingFang SC", "Noto Sans SC", "Segoe UI", sans-serif;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
 }
 
 * {
@@ -26,26 +30,40 @@
 html,
 body {
   margin: 0;
-  min-height: 100%;
+  width: 100%;
+  height: 100%;
+  height: 100svh;
+  height: 100dvh;
+  overflow: hidden;
   background:
     radial-gradient(ellipse at 20% 0%, rgba(196, 138, 42, 0.18), transparent 45%),
     radial-gradient(ellipse at 80% 100%, rgba(58, 79, 106, 0.22), transparent 40%),
     linear-gradient(165deg, #2a241c 0%, #15120f 55%, #1c232b 100%);
   color: var(--paper);
   font-family: var(--font-body);
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
   display: flex;
   justify-content: center;
-  padding: 12px;
+  align-items: stretch;
+  padding:
+    max(8px, var(--safe-top))
+    max(8px, var(--safe-right))
+    max(8px, var(--safe-bottom))
+    max(8px, var(--safe-left));
 }
 
 #app {
   width: min(100%, 460px);
+  height: 100%;
+  max-height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .top-bar {
@@ -53,13 +71,15 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 4px 2px;
+  padding: 2px 2px 0;
+  flex: 0 0 auto;
 }
 
 .brand {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
 }
 
 .brand-mark {
@@ -74,6 +94,7 @@ body {
   font-size: 1.35rem;
   font-weight: 700;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  flex: 0 0 auto;
 }
 
 .brand h1 {
@@ -92,6 +113,7 @@ body {
 
 .match-meta {
   text-align: right;
+  flex: 0 0 auto;
 }
 
 .timer {
@@ -111,17 +133,23 @@ body {
 
 .stage {
   position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
   border-radius: 18px;
   overflow: hidden;
   box-shadow: var(--shadow);
   background: #243047;
-  aspect-ratio: 420 / 720;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 #game-canvas {
   display: block;
   width: 100%;
   height: 100%;
+  max-width: 100%;
+  max-height: 100%;
   touch-action: none;
   cursor: crosshair;
   background: #2b3a4f;
@@ -132,7 +160,8 @@ body {
   inset: 0;
   display: grid;
   place-items: center;
-  padding: 20px;
+  padding: 16px;
+  overflow: auto;
   background:
     linear-gradient(180deg, rgba(20, 16, 12, 0.55), rgba(20, 16, 12, 0.78)),
     radial-gradient(circle at 50% 20%, rgba(196, 138, 42, 0.2), transparent 50%);
@@ -145,6 +174,8 @@ body {
 
 .panel-inner {
   width: min(100%, 340px);
+  max-height: 100%;
+  overflow: auto;
   padding: 22px 20px;
   border: 1px solid rgba(226, 177, 74, 0.35);
   border-radius: 16px;
@@ -245,11 +276,12 @@ body {
 }
 
 .hud {
-  padding: 12px;
+  padding: 10px;
   border-radius: 16px;
   background: var(--hud);
   border: 1px solid rgba(226, 177, 74, 0.18);
   box-shadow: var(--shadow);
+  flex: 0 0 auto;
 }
 
 .hud[hidden] {
@@ -257,7 +289,7 @@ body {
 }
 
 .qi-block {
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .qi-label {
@@ -290,7 +322,7 @@ body {
 
 .card-btn {
   position: relative;
-  min-height: 88px;
+  min-height: 76px;
   padding: 10px 8px 8px;
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -351,7 +383,7 @@ body {
 }
 
 .hint {
-  margin: 10px 0 0;
+  margin: 8px 0 0;
   font-size: 0.75rem;
   opacity: 0.7;
   text-align: center;
@@ -396,22 +428,158 @@ body {
   }
 }
 
-@media (max-width: 480px) {
+/* Compact phones / short viewports (iPhone SE, landscape browser chrome, etc.) */
+@media (max-width: 480px), (max-height: 780px) {
   body {
-    padding: 8px;
+    padding:
+      max(6px, var(--safe-top))
+      max(6px, var(--safe-right))
+      max(6px, var(--safe-bottom))
+      max(6px, var(--safe-left));
+  }
+
+  #app {
+    gap: 6px;
   }
 
   .brand-mark {
-    width: 36px;
-    height: 36px;
+    width: 34px;
+    height: 34px;
+    font-size: 1.1rem;
+  }
+
+  .brand h1 {
+    font-size: 1.15rem;
+  }
+
+  .tagline {
+    font-size: 0.65rem;
+  }
+
+  .timer {
+    font-size: 1rem;
+  }
+
+  .hud {
+    padding: 8px;
+  }
+
+  .qi-block {
+    margin-bottom: 6px;
+  }
+
+  .qi-label {
+    font-size: 0.78rem;
+    margin-bottom: 4px;
+  }
+
+  .qi-track {
+    height: 8px;
+  }
+
+  .hand {
+    gap: 6px;
   }
 
   .card-btn {
-    min-height: 78px;
-    padding: 8px 6px;
+    min-height: 64px;
+    padding: 7px 5px 6px;
   }
 
   .card-name {
-    font-size: 0.82rem;
+    margin-top: 14px;
+    font-size: 0.78rem;
+  }
+
+  .card-role {
+    font-size: 0.6rem;
+  }
+
+  .card-cost {
+    width: 20px;
+    height: 20px;
+    font-size: 0.68rem;
+  }
+
+  .hint {
+    margin-top: 6px;
+    font-size: 0.68rem;
+  }
+
+  .panel-inner {
+    padding: 16px 14px;
+  }
+
+  .panel-inner h2 {
+    font-size: 1.4rem;
+  }
+
+  .lede {
+    font-size: 0.85rem;
+    margin-bottom: 12px;
+  }
+
+  .faction-row {
+    margin-bottom: 12px;
+    gap: 12px;
+    font-size: 0.78rem;
+  }
+
+  .btn {
+    padding: 10px 18px;
+  }
+}
+
+@media (max-height: 700px) {
+  .tagline {
+    display: none;
+  }
+
+  .brand-mark {
+    width: 30px;
+    height: 30px;
+    font-size: 1rem;
+    border-radius: 8px;
+  }
+
+  .brand h1 {
+    font-size: 1.05rem;
+  }
+
+  .card-btn {
+    min-height: 54px;
+  }
+
+  .card-role {
+    display: none;
+  }
+
+  .hint {
+    display: none;
+  }
+}
+
+@media (max-height: 600px) {
+  .top-bar {
+    padding: 0;
+  }
+
+  .card-btn {
+    min-height: 48px;
+    padding: 6px 4px;
+  }
+
+  .card-name {
+    margin-top: 12px;
+    font-size: 0.72rem;
+  }
+
+  .stage {
+    border-radius: 12px;
+  }
+
+  .hud {
+    border-radius: 12px;
+    padding: 6px;
   }
 }

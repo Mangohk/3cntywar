@@ -20,22 +20,43 @@ const root = document.getElementById("app");
 const ui = createUI(root);
 const game = createGame();
 
+const BOARD_W = 420;
+const BOARD_H = 720;
+const BOARD_ASPECT = BOARD_W / BOARD_H;
+
 function resizeCanvas() {
-  // Keep internal resolution stable for gameplay feel
+  // Fit the fixed board aspect into whatever space the stage has left
+  // after header/HUD on short phone viewports (iPhone SE, browser chrome, etc.).
   const stage = canvas.parentElement;
   const rect = stage.getBoundingClientRect();
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  const cssW = rect.width;
-  const cssH = rect.height;
-  canvas.width = Math.round(420 * dpr);
-  canvas.height = Math.round(720 * dpr);
-  canvas.style.width = `${cssW}px`;
-  canvas.style.height = `${cssH}px`;
+  const availW = Math.max(1, rect.width);
+  const availH = Math.max(1, rect.height);
+
+  let cssW = availW;
+  let cssH = cssW / BOARD_ASPECT;
+  if (cssH > availH) {
+    cssH = availH;
+    cssW = cssH * BOARD_ASPECT;
+  }
+
+  canvas.width = Math.round(BOARD_W * dpr);
+  canvas.height = Math.round(BOARD_H * dpr);
+  canvas.style.width = `${Math.round(cssW)}px`;
+  canvas.style.height = `${Math.round(cssH)}px`;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 
 resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
+window.addEventListener("orientationchange", resizeCanvas);
+if (window.visualViewport) {
+  window.visualViewport.addEventListener("resize", resizeCanvas);
+}
+if (typeof ResizeObserver !== "undefined") {
+  const stageObserver = new ResizeObserver(() => resizeCanvas());
+  stageObserver.observe(canvas.parentElement);
+}
 
 ui.els.btnStart.addEventListener("click", () => {
   beginMatch();
@@ -118,7 +139,7 @@ function syncChrome() {
 }
 
 function draw() {
-  const view = { width: 420, height: 720 };
+  const view = { width: BOARD_W, height: BOARD_H };
   if (game.match) {
     render(ctx, game.match, view);
   } else {
