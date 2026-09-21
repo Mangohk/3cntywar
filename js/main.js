@@ -4,13 +4,12 @@ import {
   Phase,
   createGame,
   returnToTitle,
-  selectHandCard,
   startMatch,
   tryDeploy,
   updateMatch,
 } from "./game.js";
 import { render } from "./render.js";
-import { bindInput, validatePlayerDeploy } from "./input.js";
+import { bindInput, clientToBoard, validatePlayerDeploy } from "./input.js";
 import { createUI } from "./ui.js";
 import { SIDE } from "./board.js";
 
@@ -23,6 +22,7 @@ const game = createGame();
 const BOARD_W = 420;
 const BOARD_H = 720;
 const BOARD_ASPECT = BOARD_W / BOARD_H;
+const HINT_IDLE = "Drag a card onto your half of a lane to deploy.";
 
 function resizeCanvas() {
   // Fit the fixed board aspect into whatever space the stage has left
@@ -70,54 +70,74 @@ ui.els.btnTitle.addEventListener("click", () => {
   draw();
 });
 
-ui.onSelectCard = (index) => {
-  selectHandCard(game, index);
+ui.isMatchRunning = () => game.phase === Phase.MATCH_RUNNING;
+ui.pointToBoard = (clientX, clientY) => clientToBoard(canvas, clientX, clientY);
+
+ui.onDragStart = (index) => {
+  // Lock the dragged card; do not toggle.
+  game.selectedHandIndex = index;
+  if (game.match) game.match.deployPreview = null;
+  ui.setHint("Drop on your half of a lane.");
   syncChrome();
 };
 
-bindInput(canvas, {
-  isRunning: () => game.phase === Phase.MATCH_RUNNING,
-  hasSelection: () => game.selectedHandIndex != null,
-  onHover: (pos) => {
-    if (!game.match) return;
-    if (game.selectedHandIndex == null) {
-      game.match.deployPreview = null;
-      return;
-    }
-    if (!pos) {
-      game.match.deployPreview = null;
-      return;
-    }
-    const check = validatePlayerDeploy(pos);
-    game.match.deployPreview = { x: pos.x, y: pos.y, valid: check.valid };
-  },
-  onDeploy: (pos) => {
-    if (game.selectedHandIndex == null) {
-      ui.setHint("Select a card first, then tap your half of a lane.", true);
-      return;
-    }
-    const check = validatePlayerDeploy(pos);
-    const ok = tryDeploy(game, SIDE.PLAYER, pos.x, pos.y);
-    if (!ok) {
-      ui.setHint("Invalid deploy — place on your half of a lane.", true);
-      if (game.match) game.match.flashInvalid = { x: pos.x, y: pos.y, t: 0.35 };
-    } else {
-      ui.setHint("Select a card, then tap your half of a lane.");
-    }
-    void check;
-    syncChrome();
-  },
-  onCancel: () => {
+ui.onDragMove = (pos) => {
+  if (!game.match || game.phase !== Phase.MATCH_RUNNING) return;
+  if (!pos) {
+    game.match.deployPreview = null;
+    return;
+  }
+  const check = validatePlayerDeploy(pos);
+  game.match.deployPreview = { x: pos.x, y: pos.y, valid: check.valid };
+};
+
+ui.onDragEnd = (index, pos) => {
+  game.selectedHandIndex = index;
+  if (!pos) {
+    clearDeploySelection("Drop on the battlefield to deploy.");
+    return;
+  }
+  const check = validatePlayerDeploy(pos);
+  const ok = tryDeploy(game, SIDE.PLAYER, pos.x, pos.y, index);
+  if (!ok) {
+    if (game.match) game.match.flashInvalid = { x: pos.x, y: pos.y, t: 0.35 };
+    ui.setHint(
+      check.valid ? "Cannot deploy there." : "Invalid deploy — drop on your half of a lane.",
+      true
+    );
     game.selectedHandIndex = null;
     if (game.match) game.match.deployPreview = null;
-    syncChrome();
+  } else {
+    ui.setHint(HINT_IDLE);
+  }
+  syncChrome();
+};
+
+ui.onDragCancel = () => {
+  clearDeploySelection(HINT_IDLE);
+};
+
+function clearDeploySelection(hint) {
+  game.selectedHandIndex = null;
+  if (game.match) game.match.deployPreview = null;
+  ui.setHint(hint || HINT_IDLE);
+  syncChrome();
+}
+
+bindInput({
+  onCancel: () => {
+    if (ui.isDragging()) {
+      ui.cancelDrag();
+      return;
+    }
+    clearDeploySelection(HINT_IDLE);
   },
 });
 
 function beginMatch() {
   startMatch(game);
   ui.showMatch();
-  ui.setHint("Select a card, then tap your half of a lane.");
+  ui.setHint(HINT_IDLE);
   syncChrome();
 }
 

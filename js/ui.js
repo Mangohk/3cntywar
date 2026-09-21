@@ -1,4 +1,4 @@
-/** HUD updates: hand, Qi, timer, overlays. */
+/** HUD updates: hand, Qi, timer, overlays + card drag-and-drop. */
 
 import { getCardDef, QI_MAX } from "./cards.js";
 
@@ -23,9 +23,30 @@ export function createUI(root) {
   };
 
   let lastHandKey = "";
+  /** @type {null | { index: number, pointerId: number, ghost: HTMLElement }} */
+  let dragState = null;
+  let lastQi = 0;
+  let lastHandIds = [];
+
   const api = {
     els,
+    /** Set by main: (clientX, clientY) => board pos | null */
+    pointToBoard: null,
+    /** Set by main */
+    isMatchRunning: null,
+    onDragStart: null,
+    onDragMove: null,
+    onDragEnd: null,
+    onDragCancel: null,
+    /** @deprecated click-select — drag is primary */
+    onSelectCard: null,
+
+    isDragging() {
+      return dragState != null;
+    },
+
     showTitle() {
+      cancelDrag(false);
       els.title.hidden = false;
       els.result.hidden = true;
       els.hud.hidden = true;
@@ -39,6 +60,7 @@ export function createUI(root) {
       els.matchMeta.hidden = false;
     },
     showResult(outcome) {
+      cancelDrag(false);
       els.result.hidden = false;
       els.hud.hidden = false;
       if (outcome === "win") {
@@ -70,13 +92,21 @@ export function createUI(root) {
       els.sudden.hidden = !sudden;
     },
     updateHand(handIds, selectedIndex, qi) {
+      lastQi = qi;
+      lastHandIds = handIds;
+
+      // Never rebuild the hand DOM mid-drag — that would break pointer capture / listeners.
+      if (dragState) {
+        syncHandAffordability(qi);
+        return;
+      }
+
       const key = `${handIds.join(",")}|${selectedIndex}|${Math.floor(qi)}`;
       if (key === lastHandKey && els.hand.children.length === handIds.length) {
-        handIds.forEach((id, index) => {
-          const def = getCardDef(id);
+        syncHandAffordability(qi);
+        handIds.forEach((_, index) => {
           const btn = els.hand.children[index];
           if (!btn) return;
-          btn.classList.toggle("unaffordable", def.cost > qi);
           btn.classList.toggle("selected", selectedIndex === index);
           btn.setAttribute("aria-selected", selectedIndex === index ? "true" : "false");
         });
@@ -90,8 +120,10 @@ export function createUI(root) {
         btn.type = "button";
         btn.className = "card-btn";
         btn.dataset.index = String(index);
+        btn.dataset.cardId = id;
         btn.setAttribute("role", "option");
         btn.setAttribute("aria-selected", selectedIndex === index ? "true" : "false");
+        btn.setAttribute("aria-label", `Drag ${def.nameEn} to deploy`);
         if (selectedIndex === index) btn.classList.add("selected");
         if (def.cost > qi) btn.classList.add("unaffordable");
         btn.innerHTML = `
@@ -99,9 +131,7 @@ export function createUI(root) {
           <span class="card-name">${def.name}</span>
           <span class="card-role">${def.nameEn} · ${def.role}</span>
         `;
-        btn.addEventListener("click", () => {
-          api.onSelectCard?.(index);
-        });
+        btn.addEventListener("pointerdown", (evt) => beginDrag(evt, index));
         els.hand.appendChild(btn);
       });
     },
@@ -109,8 +139,107 @@ export function createUI(root) {
       els.hint.textContent = text;
       els.hint.classList.toggle("flash-bad", bad);
     },
-    onSelectCard: null,
+    cancelDrag() {
+      cancelDrag(true);
+    },
   };
+
+  function syncHandAffordability(qi) {
+    for (const btn of els.hand.children) {
+      const id = btn.dataset.cardId;
+      if (!id) continue;
+      const def = getCardDef(id);
+      btn.classList.toggle("unaffordable", def.cost > qi);
+    }
+  }
+
+  function beginDrag(evt, index) {
+    if (evt.button != null && evt.button !== 0) return;
+    if (!api.isMatchRunning?.()) return;
+    if (dragState) return;
+
+    const cardId = lastHandIds[index];
+    if (!cardId) return;
+    const def = getCardDef(cardId);
+    if (def.cost > lastQi) {
+      api.setHint("Not enough Qi for that card.", true);
+      return;
+    }
+
+    evt.preventDefault();
+    evt.stopPropagation();
+
+    const ghost = document.createElement("div");
+    ghost.className = "drag-ghost";
+    ghost.setAttribute("aria-hidden", "true");
+    ghost.innerHTML = `
+      <span class="card-cost">${def.cost}</span>
+      <span class="card-name">${def.name}</span>
+      <span class="card-role">${def.nameEn}</span>
+    `;
+    document.body.appendChild(ghost);
+    positionGhost(ghost, evt.clientX, evt.clientY);
+
+    dragState = { index, pointerId: evt.pointerId, ghost };
+    const btn = els.hand.children[index];
+    if (btn) btn.classList.add("dragging", "selected");
+
+    window.addEventListener("pointermove", onDragMove);
+    window.addEventListener("pointerup", onDragUp);
+    window.addEventListener("pointercancel", onDragUp);
+
+    api.onDragStart?.(index);
+    emitDragMove(evt.clientX, evt.clientY);
+  }
+
+  function onDragMove(evt) {
+    if (!dragState || evt.pointerId !== dragState.pointerId) return;
+    evt.preventDefault();
+    positionGhost(dragState.ghost, evt.clientX, evt.clientY);
+    emitDragMove(evt.clientX, evt.clientY);
+  }
+
+  function onDragUp(evt) {
+    if (!dragState || evt.pointerId !== dragState.pointerId) return;
+    evt.preventDefault();
+    const { index } = dragState;
+    const pos = api.pointToBoard?.(evt.clientX, evt.clientY) ?? null;
+    cleanupDragDom();
+    dragState = null;
+    removeDragListeners();
+    api.onDragEnd?.(index, pos);
+  }
+
+  function emitDragMove(clientX, clientY) {
+    const pos = api.pointToBoard?.(clientX, clientY) ?? null;
+    api.onDragMove?.(pos);
+  }
+
+  function positionGhost(ghost, clientX, clientY) {
+    ghost.style.transform = `translate(${clientX}px, ${clientY}px) translate(-50%, -60%)`;
+  }
+
+  function removeDragListeners() {
+    window.removeEventListener("pointermove", onDragMove);
+    window.removeEventListener("pointerup", onDragUp);
+    window.removeEventListener("pointercancel", onDragUp);
+  }
+
+  function cleanupDragDom() {
+    if (!dragState) return;
+    dragState.ghost.remove();
+    for (const btn of els.hand.children) {
+      btn.classList.remove("dragging");
+    }
+  }
+
+  function cancelDrag(notify) {
+    if (!dragState) return;
+    cleanupDragDom();
+    dragState = null;
+    removeDragListeners();
+    if (notify) api.onDragCancel?.();
+  }
 
   return api;
 }
