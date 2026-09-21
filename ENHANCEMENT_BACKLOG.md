@@ -36,5 +36,8 @@ Missing / weak vs CR:
 See chat message for the 5 options.
 
 **Chosen: A — Troop Count** (2026-09-21)
+- Implementer: PASS (commit `5f836e9`)
+- Tester: PASS (`troop-count.mjs`, `smoke.mjs`, `sight-range.mjs` + browser militia×3)
+- Status: awaiting user review / approve / push (or merge)
 
 **Implemented:** Each card has `count` (≥ 1). `tryDeploy` spends Qi / cycles hand once and calls `spawnCardUnits` to place N units with small lane-clamped offsets near the drop. Baseline: militia 3, crossbow/spearman 2, elites & siege 1.
