@@ -21,6 +21,7 @@ export function render(ctx, match, view) {
 
   drawArena(ctx, width, height);
   drawBuildings(ctx, match.buildings, width, height);
+  drawSightRanges(ctx, match.units, width, height);
   drawUnits(ctx, match.units, width, height);
   drawProjectiles(ctx, match.projectiles, width, height);
 
@@ -145,6 +146,30 @@ function drawRubble(ctx, b, w, h) {
   ctx.fillStyle = "rgba(40,35,30,0.55)";
   roundRect(ctx, p.x - bw / 2, p.y - bh / 2, bw, bh, 6);
   ctx.fill();
+}
+
+function drawSightRanges(ctx, units, w, h) {
+  for (const u of units) {
+    if (!u.alive) continue;
+    // Only show the sight ring while the troop has no locked enemy.
+    if (u.targetId != null) continue;
+    const sight = u.sightRange;
+    if (!sight || sight <= 0) continue;
+
+    const p = toScreen(u.x, u.y, w, h);
+    // Sight is circular in normalized board space → ellipse on the portrait canvas.
+    const rx = sight * w;
+    const ry = sight * h;
+
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y, rx, ry, 0, 0, Math.PI * 2);
+    ctx.strokeStyle =
+      u.side === SIDE.PLAYER ? "rgba(109, 206, 138, 0.55)" : "rgba(255, 176, 160, 0.5)";
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([6, 5]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
 }
 
 function drawUnits(ctx, units, w, h) {
