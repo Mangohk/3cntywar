@@ -52,6 +52,7 @@ export function spawnUnit(cardId, side, x, y) {
     damage: def.damage,
     attackSpeedSec: def.attackSpeedSec,
     range: def.range,
+    sightRange: def.sightRange,
     moveSpeed: def.moveSpeed,
     targetPreference: def.targetPreference,
     splashRadius: def.splashRadius || 0,

@@ -130,7 +130,7 @@ Use a shared schema; tune in playtests:
 {
   id, name, cost, role,
   hp, damage, attackSpeedSec,
-  range, moveSpeed,
+  range, sightRange, moveSpeed,
   targetPreference: "any" | "buildings" | "troops",
   splashRadius?: number,
   traits?: ["anti_cavalry", "fast", ...]
@@ -155,10 +155,12 @@ Exact numbers live in `data/cards.js` and are expected to change often.
 
 ### 8.1 Targeting
 
-1. Unit looks for nearest valid target **in the same lane** within aggro rules.
-2. If none, walk forward toward the enemy end of the lane.
-3. Buildings are valid targets when in range.
-4. Ranged units stop at max range; melee close to contact.
+1. Each troop has a **sight range** (varies by type; always ≥ attack range).
+2. Unit looks for the **nearest** valid enemy **in the same lane** that is currently inside its sight range.
+3. If none are in sight, walk forward toward the enemy end of the lane.
+4. Once a target is acquired, approach it and fight until it dies (sticky chase).
+5. Buildings are valid targets when they enter sight.
+6. Ranged units stop at max attack range; melee close to contact.
 
 ### 8.2 Damage
 

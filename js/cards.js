@@ -19,7 +19,8 @@ export const MATCH_TIME_LIMIT = 180;
  * @property {number} hp
  * @property {number} damage
  * @property {number} attackSpeedSec
- * @property {number} range
+ * @property {number} range attack reach
+ * @property {number} sightRange how far the troop can notice enemies
  * @property {number} moveSpeed
  * @property {TargetPreference} targetPreference
  * @property {number} [splashRadius]
@@ -40,6 +41,7 @@ export const CARD_DEFS = [
     damage: 42,
     attackSpeedSec: 1.15,
     range: 0.035,
+    sightRange: 0.22,
     moveSpeed: 0.085,
     targetPreference: "any",
     color: "#6f9f78",
@@ -55,6 +57,7 @@ export const CARD_DEFS = [
     damage: 48,
     attackSpeedSec: 0.95,
     range: 0.2,
+    sightRange: 0.34,
     moveSpeed: 0.065,
     targetPreference: "any",
     color: "#7aadcf",
@@ -70,6 +73,7 @@ export const CARD_DEFS = [
     damage: 72,
     attackSpeedSec: 1.05,
     range: 0.035,
+    sightRange: 0.28,
     moveSpeed: 0.145,
     targetPreference: "any",
     traits: ["fast"],
@@ -86,6 +90,7 @@ export const CARD_DEFS = [
     damage: 58,
     attackSpeedSec: 1.15,
     range: 0.045,
+    sightRange: 0.24,
     moveSpeed: 0.07,
     targetPreference: "any",
     traits: ["anti_cavalry"],
@@ -102,6 +107,7 @@ export const CARD_DEFS = [
     damage: 78,
     attackSpeedSec: 1.45,
     range: 0.24,
+    sightRange: 0.38,
     moveSpeed: 0.05,
     targetPreference: "any",
     splashRadius: 0.09,
@@ -118,6 +124,7 @@ export const CARD_DEFS = [
     damage: 125,
     attackSpeedSec: 1.25,
     range: 0.04,
+    sightRange: 0.26,
     moveSpeed: 0.072,
     targetPreference: "any",
     color: "#d4543a",
@@ -133,6 +140,7 @@ export const CARD_DEFS = [
     damage: 95,
     attackSpeedSec: 1.35,
     range: 0.04,
+    sightRange: 0.25,
     moveSpeed: 0.068,
     targetPreference: "any",
     splashRadius: 0.065,
@@ -149,6 +157,7 @@ export const CARD_DEFS = [
     damage: 165,
     attackSpeedSec: 2.1,
     range: 0.34,
+    sightRange: 0.45,
     moveSpeed: 0.035,
     targetPreference: "buildings",
     color: "#a8896a",

@@ -44,6 +44,7 @@ export function createBuildingBlueprints() {
       damage: 80,
       attackSpeedSec: 1.7,
       range: 0.27,
+      sightRange: 0.27,
     },
     {
       id: "enemy-outpost-l",
@@ -58,6 +59,7 @@ export function createBuildingBlueprints() {
       damage: 60,
       attackSpeedSec: 1.65,
       range: 0.25,
+      sightRange: 0.25,
     },
     {
       id: "enemy-outpost-r",
@@ -72,6 +74,7 @@ export function createBuildingBlueprints() {
       damage: 60,
       attackSpeedSec: 1.65,
       range: 0.25,
+      sightRange: 0.25,
     },
     {
       id: "player-outpost-l",
@@ -86,6 +89,7 @@ export function createBuildingBlueprints() {
       damage: 60,
       attackSpeedSec: 1.65,
       range: 0.25,
+      sightRange: 0.25,
     },
     {
       id: "player-outpost-r",
@@ -100,6 +104,7 @@ export function createBuildingBlueprints() {
       damage: 60,
       attackSpeedSec: 1.65,
       range: 0.25,
+      sightRange: 0.25,
     },
     {
       id: "player-main",
@@ -114,6 +119,7 @@ export function createBuildingBlueprints() {
       damage: 80,
       attackSpeedSec: 1.7,
       range: 0.27,
+      sightRange: 0.27,
     },
   ];
 }

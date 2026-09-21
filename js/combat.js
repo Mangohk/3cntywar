@@ -19,27 +19,52 @@ export function isValidTarget(attacker, target) {
   if (!sameLaneOrBuilding(attacker, target)) return false;
 
   const pref = attacker.targetPreference || "any";
-  if (pref === "buildings" && target.entityType !== "building") {
-    // Still allow troops if no building in range later; preference handled in scoring.
-  }
   if (pref === "troops" && target.entityType === "building") return false;
   return true;
 }
 
+/** Body/footprint radius used for reach and sight checks. */
+export function targetPadding(target) {
+  if (!target) return 0;
+  if (target.entityType === "building") {
+    return Math.max(target.w || 0, target.h || 0) * 0.35;
+  }
+  return target.radius || 0.03;
+}
+
+export function getSightRange(attacker) {
+  if (attacker.sightRange != null) return attacker.sightRange;
+  // Buildings (and any legacy entity) acquire with their attack reach.
+  return attacker.range || 0;
+}
+
+/** True when the target is within the attacker's sight range. */
+export function inSight(attacker, target) {
+  if (!attacker || !target) return false;
+  const d = dist(attacker.x, attacker.y, target.x, target.y);
+  return d <= getSightRange(attacker) + targetPadding(target);
+}
+
 function targetScore(attacker, target) {
+  // Nearest enemy wins; preference only breaks near-ties / biases siege.
   const d = dist(attacker.x, attacker.y, target.x, target.y);
   let score = d;
   const pref = attacker.targetPreference || "any";
-  if (pref === "buildings" && target.entityType === "building") score -= 0.35;
-  if (pref === "buildings" && target.entityType === "unit") score += 0.25;
+  if (pref === "buildings" && target.entityType === "building") score -= 0.08;
+  if (pref === "buildings" && target.entityType === "unit") score += 0.12;
   return score;
 }
 
+/**
+ * Pick the nearest valid enemy currently inside sight range.
+ * Returns null when nothing is visible — caller should keep marching.
+ */
 export function findNearestTarget(attacker, units, buildings) {
   let best = null;
   let bestScore = Infinity;
   for (const u of units) {
     if (!isValidTarget(attacker, u)) continue;
+    if (!inSight(attacker, u)) continue;
     const s = targetScore(attacker, u);
     if (s < bestScore) {
       bestScore = s;
@@ -48,6 +73,7 @@ export function findNearestTarget(attacker, units, buildings) {
   }
   for (const b of buildings) {
     if (!isValidTarget(attacker, b)) continue;
+    if (!inSight(attacker, b)) continue;
     const s = targetScore(attacker, b);
     if (s < bestScore) {
       bestScore = s;
@@ -93,6 +119,9 @@ export function applySplash(center, amount, splashRadius, units, buildings, atta
 /**
  * Resolve combat for one unit or building for this frame.
  * Returns new projectiles to spawn.
+ *
+ * Units: march until an enemy enters sightRange, then lock the nearest one,
+ * approach until attack range, and fight until it dies.
  */
 export function tickAttacker(attacker, dt, units, buildings) {
   const projectiles = [];
@@ -107,6 +136,7 @@ export function tickAttacker(attacker, dt, units, buildings) {
       units.find((u) => u.id === attacker.targetId) ||
       buildings.find((b) => b.id === attacker.targetId) ||
       null;
+    // Sticky chase once acquired — keep pursuing even if they leave sight.
     if (!target || !target.alive || !isValidTarget(attacker, target)) {
       attacker.targetId = null;
       target = null;
@@ -120,13 +150,11 @@ export function tickAttacker(attacker, dt, units, buildings) {
   attacker.attacking = false;
   if (!target) return projectiles;
 
-  const reach =
-    attacker.range +
-    (target.entityType === "building" ? Math.max(target.w, target.h) * 0.35 : target.radius || 0.03);
+  const reach = attacker.range + targetPadding(target);
   const d = dist(attacker.x, attacker.y, target.x, target.y);
 
   if (d > reach) {
-    // Move toward target if unit; buildings stay put.
+    // Approach the locked target; buildings stay put.
     if (attacker.entityType === "unit") {
       const step = attacker.moveSpeed * dt;
       const nx = attacker.x + ((target.x - attacker.x) / d) * step;
