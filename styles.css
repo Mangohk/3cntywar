@@ -142,17 +142,26 @@ body {
 }
 
 .btn-mute[aria-pressed="true"] {
-  color: rgba(239, 230, 212, 0.55);
-  border-color: rgba(239, 230, 212, 0.2);
+  color: rgba(239, 230, 212, 0.45);
+  border-color: rgba(239, 230, 212, 0.18);
+  background: rgba(26, 23, 20, 0.35);
+}
+
+.btn-mute[aria-pressed="true"] .btn-mute-icon {
+  opacity: 0.55;
 }
 
 .btn-mute[aria-pressed="true"] .btn-mute-icon::after {
   content: "";
   position: absolute;
-  width: 18px;
+  left: 50%;
+  top: 50%;
+  width: 20px;
   height: 2px;
+  margin-left: -10px;
+  margin-top: -1px;
   background: currentColor;
-  transform: rotate(-45deg);
+  transform: rotate(-42deg);
   border-radius: 1px;
 }
 
