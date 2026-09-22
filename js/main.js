@@ -13,7 +13,7 @@ import { render } from "./render.js";
 import { bindInput, clientToBoard, validatePlayerDeploy } from "./input.js";
 import { createUI } from "./ui.js";
 import { SIDE } from "./board.js";
-import { isMuted, sfx, toggleMute, unlockAudio } from "./audio.js";
+import { isMuted, setMuted, sfx, toggleMute, unlockAudio } from "./audio.js";
 
 const canvas = document.getElementById("game-canvas");
 const ctx = canvas.getContext("2d");
@@ -244,4 +244,18 @@ requestAnimationFrame(frame);
 // Debug/testing hook
 window.__game = game;
 window.__ui = ui;
-window.__audio = { isMuted, toggleMute, sfx, unlockAudio };
+window.__audio = {
+  isMuted,
+  unlockAudio,
+  sfx,
+  toggleMute() {
+    const muted = toggleMute();
+    syncMuteButton();
+    return muted;
+  },
+  setMuted(next) {
+    const muted = setMuted(next);
+    syncMuteButton();
+    return muted;
+  },
+};
