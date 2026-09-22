@@ -19,9 +19,22 @@
             <p class="tagline">三国战场 · Player vs Computer</p>
           </div>
         </div>
-        <div class="match-meta" id="match-meta" hidden>
-          <div class="timer" id="match-timer">0:00</div>
-          <div class="sudden-death" id="sudden-death" hidden>Sudden Death</div>
+        <div class="top-bar-actions">
+          <button
+            type="button"
+            id="btn-mute"
+            class="btn-mute"
+            aria-pressed="false"
+            aria-label="Mute sound"
+            title="Mute"
+          >
+            <span class="btn-mute-icon" id="btn-mute-icon" aria-hidden="true">♪</span>
+            <span class="btn-mute-slash" aria-hidden="true"></span>
+          </button>
+          <div class="match-meta" id="match-meta" hidden>
+            <div class="timer" id="match-timer">0:00</div>
+            <div class="sudden-death" id="sudden-death" hidden>Sudden Death</div>
+          </div>
         </div>
       </header>
 

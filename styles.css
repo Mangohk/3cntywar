@@ -111,6 +111,63 @@ body {
   opacity: 0.72;
 }
 
+.top-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+
+.btn-mute {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 10px;
+  border: 1px solid rgba(226, 177, 74, 0.35);
+  background: rgba(26, 23, 20, 0.55);
+  color: var(--gold-bright);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  font-size: 1.05rem;
+  line-height: 1;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.btn-mute:hover,
+.btn-mute:focus-visible {
+  border-color: rgba(226, 177, 74, 0.7);
+  background: rgba(26, 23, 20, 0.75);
+  outline: none;
+}
+
+.btn-mute[aria-pressed="true"] {
+  color: rgba(239, 230, 212, 0.5);
+  border-color: rgba(239, 230, 212, 0.2);
+  background: rgba(26, 23, 20, 0.4);
+}
+
+.btn-mute-icon {
+  display: grid;
+  place-items: center;
+}
+
+.btn-mute-slash {
+  display: none;
+  position: absolute;
+  width: 22px;
+  height: 2px;
+  border-radius: 1px;
+  background: currentColor;
+  transform: rotate(-42deg);
+  pointer-events: none;
+}
+
+.btn-mute[aria-pressed="true"] .btn-mute-slash {
+  display: block;
+}
+
 .match-meta {
   text-align: right;
   flex: 0 0 auto;

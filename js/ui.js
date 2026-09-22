@@ -20,6 +20,7 @@ export function createUI(root) {
     banner: root.querySelector("#match-banner"),
     bannerTitle: root.querySelector("#match-banner-title"),
     bannerSub: root.querySelector("#match-banner-sub"),
+    btnMute: root.querySelector("#btn-mute"),
     btnStart: root.querySelector("#btn-start"),
     btnRetry: root.querySelector("#btn-retry"),
     btnTitle: root.querySelector("#btn-title"),

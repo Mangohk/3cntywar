@@ -13,6 +13,7 @@ import { render } from "./render.js";
 import { bindInput, clientToBoard, validatePlayerDeploy } from "./input.js";
 import { createUI } from "./ui.js";
 import { SIDE } from "./board.js";
+import { isMuted, setMuted, sfx, toggleMute, unlockAudio } from "./audio.js";
 
 const canvas = document.getElementById("game-canvas");
 const ctx = canvas.getContext("2d");
@@ -24,6 +25,21 @@ const BOARD_W = 420;
 const BOARD_H = 966; // width:height = 1:2.3
 const BOARD_ASPECT = BOARD_W / BOARD_H;
 const HINT_IDLE = "Drag a card onto your half of a lane to deploy.";
+
+function syncMuteButton() {
+  const muted = isMuted();
+  ui.els.btnMute.setAttribute("aria-pressed", muted ? "true" : "false");
+  ui.els.btnMute.setAttribute("aria-label", muted ? "Unmute sound" : "Mute sound");
+  ui.els.btnMute.title = muted ? "Unmute" : "Mute";
+}
+
+syncMuteButton();
+
+function unlockOnGesture() {
+  unlockAudio();
+}
+window.addEventListener("pointerdown", unlockOnGesture, { once: true });
+window.addEventListener("keydown", unlockOnGesture, { once: true });
 
 function resizeCanvas() {
   // Fit the fixed board aspect into whatever space the stage has left
@@ -59,13 +75,26 @@ if (typeof ResizeObserver !== "undefined") {
   stageObserver.observe(canvas.parentElement);
 }
 
+ui.els.btnMute.addEventListener("click", (evt) => {
+  evt.preventDefault();
+  evt.stopPropagation();
+  toggleMute();
+  syncMuteButton();
+  if (!isMuted()) sfx.ui();
+});
+
 ui.els.btnStart.addEventListener("click", () => {
+  unlockAudio();
+  sfx.ui();
   beginMatch();
 });
 ui.els.btnRetry.addEventListener("click", () => {
+  unlockAudio();
+  sfx.ui();
   beginMatch();
 });
 ui.els.btnTitle.addEventListener("click", () => {
+  sfx.ui();
   returnToTitle(game);
   syncChrome();
   draw();
@@ -76,6 +105,8 @@ ui.pointToBoard = (clientX, clientY) => clientToBoard(canvas, clientX, clientY);
 
 ui.onDragStart = (index) => {
   // Lock the dragged card; do not toggle.
+  unlockAudio();
+  sfx.ui();
   game.selectedHandIndex = index;
   if (game.match) game.match.deployPreview = null;
   ui.setHint("Drop on your half of a lane.");
@@ -101,6 +132,7 @@ ui.onDragEnd = (index, pos) => {
   const check = validatePlayerDeploy(pos);
   const ok = tryDeploy(game, SIDE.PLAYER, pos.x, pos.y, index);
   if (!ok) {
+    sfx.deny();
     if (game.match) game.match.flashInvalid = { x: pos.x, y: pos.y, t: 0.35 };
     ui.setHint(
       check.valid ? "Cannot deploy there." : "Invalid deploy — drop on your half of a lane.",
@@ -212,3 +244,18 @@ requestAnimationFrame(frame);
 // Debug/testing hook
 window.__game = game;
 window.__ui = ui;
+window.__audio = {
+  isMuted,
+  unlockAudio,
+  sfx,
+  toggleMute() {
+    const muted = toggleMute();
+    syncMuteButton();
+    return muted;
+  },
+  setMuted(next) {
+    const muted = setMuted(next);
+    syncMuteButton();
+    return muted;
+  },
+};
