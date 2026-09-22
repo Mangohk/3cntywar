@@ -17,6 +17,9 @@ export function createUI(root) {
     matchMeta: root.querySelector("#match-meta"),
     sudden: root.querySelector("#sudden-death"),
     hint: root.querySelector("#deploy-hint"),
+    banner: root.querySelector("#match-banner"),
+    bannerTitle: root.querySelector("#match-banner-title"),
+    bannerSub: root.querySelector("#match-banner-sub"),
     btnStart: root.querySelector("#btn-start"),
     btnRetry: root.querySelector("#btn-retry"),
     btnTitle: root.querySelector("#btn-title"),
@@ -51,6 +54,7 @@ export function createUI(root) {
       els.result.hidden = true;
       els.hud.hidden = true;
       els.matchMeta.hidden = true;
+      clearBanner();
       lastHandKey = "";
     },
     showMatch() {
@@ -61,6 +65,7 @@ export function createUI(root) {
     },
     showResult(outcome) {
       cancelDrag(false);
+      clearBanner();
       els.result.hidden = false;
       els.hud.hidden = false;
       if (outcome === "win") {
@@ -85,11 +90,47 @@ export function createUI(root) {
       els.qiValue.textContent = Number.isInteger(shown) ? String(shown) : shown.toFixed(1);
       els.qiFill.style.width = `${(qi / QI_MAX) * 100}%`;
     },
-    updateTimer(seconds, sudden) {
+    /**
+     * @param {number} seconds
+     * @param {boolean} sudden
+     * @param {number | null} suddenIn whole seconds until sudden death, or null
+     */
+    updateTimer(seconds, sudden, suddenIn = null) {
       const m = Math.floor(seconds / 60);
       const s = Math.floor(seconds % 60);
       els.timer.textContent = `${m}:${s.toString().padStart(2, "0")}`;
-      els.sudden.hidden = !sudden;
+      els.timer.classList.toggle("timer-warn", !sudden && suddenIn != null);
+
+      if (sudden) {
+        els.sudden.hidden = false;
+        els.sudden.textContent = "Sudden Death";
+        els.sudden.classList.remove("countdown");
+      } else if (suddenIn != null) {
+        els.sudden.hidden = false;
+        els.sudden.textContent = `Sudden Death in ${suddenIn}`;
+        els.sudden.classList.add("countdown");
+      } else {
+        els.sudden.hidden = true;
+        els.sudden.classList.remove("countdown");
+      }
+    },
+    /**
+     * @param {null | { kind: string, text: string, sub?: string, t: number }} banner
+     */
+    updateBanner(banner) {
+      if (!els.banner) return;
+      if (!banner || banner.t <= 0) {
+        clearBanner();
+        return;
+      }
+      els.banner.hidden = false;
+      els.banner.dataset.kind = banner.kind;
+      els.bannerTitle.textContent = banner.text;
+      els.bannerSub.textContent = banner.sub || "";
+      els.bannerSub.hidden = !banner.sub;
+      // Fade out in the last third of a second.
+      const fade = Math.min(1, banner.t / 0.35);
+      els.banner.style.opacity = String(fade);
     },
     updateHand(handIds, selectedIndex, qi) {
       lastQi = qi;
@@ -239,6 +280,18 @@ export function createUI(root) {
     dragState = null;
     removeDragListeners();
     if (notify) api.onDragCancel?.();
+  }
+
+  function clearBanner() {
+    if (!els.banner) return;
+    els.banner.hidden = true;
+    els.banner.removeAttribute("data-kind");
+    els.banner.style.opacity = "";
+    if (els.bannerTitle) els.bannerTitle.textContent = "";
+    if (els.bannerSub) {
+      els.bannerSub.textContent = "";
+      els.bannerSub.hidden = true;
+    }
   }
 
   return api;

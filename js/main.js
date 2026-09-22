@@ -5,6 +5,7 @@ import {
   createGame,
   returnToTitle,
   startMatch,
+  suddenDeathCountdown,
   tryDeploy,
   updateMatch,
 } from "./game.js";
@@ -149,7 +150,8 @@ function syncChrome() {
   const m = game.match;
   if (!m) return;
   ui.updateQi(m.playerQi);
-  ui.updateTimer(m.time, m.suddenDeath);
+  ui.updateTimer(m.time, m.suddenDeath, suddenDeathCountdown(m));
+  ui.updateBanner(m.banner);
   ui.updateHand(m.playerHand.hand, game.selectedHandIndex, m.playerQi);
   if (game.phase === Phase.MATCH_OVER) {
     ui.showResult(m.outcome);
@@ -187,11 +189,16 @@ function frame(now) {
     updateMatch(game, dt);
     syncChrome();
   } else if (game.match) {
-    // Keep drawing end state with light decay on flashes
+    // Keep drawing end state with light decay on flashes / banners
     if (game.match.flashInvalid) {
       game.match.flashInvalid.t -= Math.min(dt, 0.05);
       if (game.match.flashInvalid.t <= 0) game.match.flashInvalid = null;
     }
+    if (game.match.banner) {
+      game.match.banner.t -= Math.min(dt, 0.05);
+      if (game.match.banner.t <= 0) game.match.banner = null;
+    }
+    ui.updateBanner(game.match.banner);
   }
 
   draw();

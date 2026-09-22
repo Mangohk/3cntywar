@@ -38,6 +38,10 @@ export function createGame() {
   };
 }
 
+/** Seconds before sudden death to start the HUD countdown. */
+export const SUDDEN_WARN_LEAD = 10;
+const BANNER_HOLD_SEC = 2.4;
+
 export function startMatch(game) {
   resetEntityIds();
   game.phase = Phase.MATCH_RUNNING;
@@ -55,6 +59,10 @@ export function startMatch(game) {
     ai: createAIState(),
     deployPreview: null,
     flashInvalid: null,
+    /** @type {null | { kind: string, text: string, sub: string, t: number }} */
+    banner: null,
+    /** Outpost ids already announced as fallen. */
+    fallenOutpostIds: [],
     outcome: null,
     // Ensure deck uses all 8 cards (sanity)
     rosterSize: CARD_DEFS.length,
@@ -120,6 +128,11 @@ export function updateMatch(game, dt) {
 
   if (!match.suddenDeath && match.time >= SUDDEN_DEATH_AT) {
     match.suddenDeath = true;
+    setBanner(match, {
+      kind: "sudden",
+      text: "Sudden Death",
+      sub: "Qi regenerates twice as fast",
+    });
   }
 
   const regen = match.suddenDeath ? QI_REGEN_SUDDEN_SEC : QI_REGEN_SEC;
@@ -129,6 +142,11 @@ export function updateMatch(game, dt) {
   if (match.flashInvalid) {
     match.flashInvalid.t -= clamped;
     if (match.flashInvalid.t <= 0) match.flashInvalid = null;
+  }
+
+  if (match.banner) {
+    match.banner.t -= clamped;
+    if (match.banner.t <= 0) match.banner = null;
   }
 
   updateAI(match, clamped, (cardId, side, x, y, handIndex) => {
@@ -160,6 +178,8 @@ export function updateMatch(game, dt) {
   match.units = match.units.filter((u) => u.alive);
   match.projectiles = match.projectiles.filter((p) => p.alive);
 
+  announceFallenOutposts(match);
+
   const playerMain = match.buildings.find((b) => b.id === "player-main");
   const enemyMain = match.buildings.find((b) => b.id === "enemy-main");
 
@@ -174,6 +194,40 @@ export function updateMatch(game, dt) {
   if (match.time >= MATCH_TIME_LIMIT) {
     endMatch(game, formatOutcomeFromCamps(playerMain, enemyMain));
   }
+}
+
+function setBanner(match, { kind, text, sub }) {
+  match.banner = { kind, text, sub: sub || "", t: BANNER_HOLD_SEC };
+}
+
+function announceFallenOutposts(match) {
+  for (const b of match.buildings) {
+    if (b.kind !== "outpost" || b.alive) continue;
+    if (match.fallenOutpostIds.includes(b.id)) continue;
+    match.fallenOutpostIds.push(b.id);
+    const laneName = b.lane === 0 ? "Left" : "Right";
+    if (b.side === SIDE.ENEMY) {
+      setBanner(match, {
+        kind: "outpost-win",
+        text: `${laneName} Outpost Fallen`,
+        sub: "Wei 营寨 destroyed",
+      });
+    } else {
+      setBanner(match, {
+        kind: "outpost-lose",
+        text: `${laneName} Outpost Lost`,
+        sub: "Your 营寨 destroyed",
+      });
+    }
+  }
+}
+
+/** Whole seconds remaining until sudden death, or null outside the warn window. */
+export function suddenDeathCountdown(match) {
+  if (!match || match.suddenDeath) return null;
+  const remaining = SUDDEN_DEATH_AT - match.time;
+  if (remaining > SUDDEN_WARN_LEAD || remaining <= 0) return null;
+  return Math.max(1, Math.ceil(remaining));
 }
 
 function endMatch(game, outcome) {
