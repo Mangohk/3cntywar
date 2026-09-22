@@ -28,3 +28,5 @@ The UI is locked to the viewport (`100dvh`) and scales the board to fit phones (
 ## Status
 
 v0.1 playable vertical slice: offline Player vs Computer, 2 lanes, Qi resource, fixed 8-card deck, basic AI.
+
+**Audio:** procedural SFX (deploy, combat, banners, win/lose) via Web Audio. Use the ♪ button in the top bar to mute; preference is saved in `localStorage`.
