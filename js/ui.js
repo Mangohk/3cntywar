@@ -20,10 +20,10 @@ export function createUI(root) {
     banner: root.querySelector("#match-banner"),
     bannerTitle: root.querySelector("#match-banner-title"),
     bannerSub: root.querySelector("#match-banner-sub"),
+    btnMute: root.querySelector("#btn-mute"),
     btnStart: root.querySelector("#btn-start"),
     btnRetry: root.querySelector("#btn-retry"),
     btnTitle: root.querySelector("#btn-title"),
-    btnMute: root.querySelector("#btn-mute"),
   };
 
   let lastHandKey = "";
@@ -180,17 +180,6 @@ export function createUI(root) {
     setHint(text, bad = false) {
       els.hint.textContent = text;
       els.hint.classList.toggle("flash-bad", bad);
-    },
-    /**
-     * Reflect mute state on the Sound / Muted control.
-     * @param {boolean} muted
-     */
-    syncMute(muted) {
-      if (!els.btnMute) return;
-      els.btnMute.setAttribute("aria-pressed", muted ? "true" : "false");
-      els.btnMute.classList.toggle("is-muted", muted);
-      els.btnMute.textContent = muted ? "Muted" : "Sound";
-      els.btnMute.title = muted ? "Unmute sound" : "Mute sound";
     },
     cancelDrag() {
       cancelDrag(true);

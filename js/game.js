@@ -23,12 +23,7 @@ import {
 import { resolveProjectileImpact, tickAttacker } from "./combat.js";
 import { createAIState, updateAI } from "./ai.js";
 import { formatOutcomeFromCamps } from "./ui.js";
-import {
-  playDeploy,
-  playOutcome,
-  playOutpostFall,
-  playSudden,
-} from "./audio.js";
+import { sfx } from "./audio.js";
 
 export const Phase = {
   TITLE: "TITLE",
@@ -117,7 +112,7 @@ export function tryDeploy(game, side, x, y, handIndex = null) {
   match[qiKey] -= def.cost;
   playCardFromHand(handState, idx);
   match.units.push(...spawnCardUnits(cardId, side, x, y));
-  playDeploy(side);
+  sfx.deploy();
 
   if (side === SIDE.PLAYER) {
     game.selectedHandIndex = null;
@@ -140,7 +135,7 @@ export function updateMatch(game, dt) {
       text: "Sudden Death",
       sub: "Qi regenerates twice as fast",
     });
-    playSudden();
+    sfx.suddenDeath();
   }
 
   const regen = match.suddenDeath ? QI_REGEN_SUDDEN_SEC : QI_REGEN_SEC;
@@ -160,6 +155,8 @@ export function updateMatch(game, dt) {
   updateAI(match, clamped, (cardId, side, x, y, handIndex) => {
     tryDeploy(game, side, x, y, handIndex);
   });
+
+  const combatBefore = snapshotCombat(match);
 
   // Combat ticks (chase when target out of range; otherwise march forward)
   const newProjectiles = [];
@@ -182,6 +179,8 @@ export function updateMatch(game, dt) {
     const hit = updateProjectile(p, clamped);
     if (hit) resolveProjectileImpact(p, match.units, match.buildings);
   }
+
+  playCombatSfx(combatBefore, match);
 
   match.units = match.units.filter((u) => u.alive);
   match.projectiles = match.projectiles.filter((p) => p.alive);
@@ -208,6 +207,38 @@ function setBanner(match, { kind, text, sub }) {
   match.banner = { kind, text, sub: sub || "", t: BANNER_HOLD_SEC };
 }
 
+function snapshotCombat(match) {
+  return {
+    units: match.units.map((u) => ({ id: u.id, hp: u.hp, alive: u.alive })),
+    buildings: match.buildings.map((b) => ({
+      id: b.id,
+      hp: b.hp,
+      alive: b.alive,
+      kind: b.kind,
+    })),
+  };
+}
+
+function playCombatSfx(before, match) {
+  let anyHit = false;
+  for (const prev of before.units) {
+    const u = match.units.find((x) => x.id === prev.id);
+    if (!u) continue;
+    if (u.hp < prev.hp) anyHit = true;
+    if (prev.alive && !u.alive) sfx.death();
+  }
+  for (const prev of before.buildings) {
+    const b = match.buildings.find((x) => x.id === prev.id);
+    if (!b) continue;
+    if (b.hp < prev.hp) {
+      anyHit = true;
+      sfx.buildingHit();
+    }
+    if (prev.alive && !b.alive) sfx.buildingDestroy();
+  }
+  if (anyHit) sfx.hit();
+}
+
 function announceFallenOutposts(match) {
   for (const b of match.buildings) {
     if (b.kind !== "outpost" || b.alive) continue;
@@ -220,14 +251,12 @@ function announceFallenOutposts(match) {
         text: `${laneName} Outpost Fallen`,
         sub: "Wei 营寨 destroyed",
       });
-      playOutpostFall(false);
     } else {
       setBanner(match, {
         kind: "outpost-lose",
         text: `${laneName} Outpost Lost`,
         sub: "Your 营寨 destroyed",
       });
-      playOutpostFall(true);
     }
   }
 }
@@ -244,5 +273,7 @@ function endMatch(game, outcome) {
   game.phase = Phase.MATCH_OVER;
   game.match.outcome = outcome;
   game.selectedHandIndex = null;
-  playOutcome(outcome);
+  if (outcome === "win") sfx.win();
+  else if (outcome === "lose") sfx.lose();
+  else sfx.ui();
 }

@@ -296,7 +296,7 @@ Bonus (stretch, not required):
 
 - Sudden-death Qi speed-up
 - Simple win/lose banner with faction art placeholder
-- Mute toggle / basic SFX
+- ~~Mute toggle / basic SFX~~ — **done** (`js/audio.js`, top-bar mute)
 
 ---
 

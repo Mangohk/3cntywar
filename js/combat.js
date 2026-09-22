@@ -2,7 +2,6 @@
 
 import { SIDE, constrainCrossingX, dist } from "./board.js";
 import { spawnProjectile } from "./entities.js";
-import { playHit } from "./audio.js";
 
 export function sameLaneOrBuilding(attacker, target) {
   if (!target || !target.alive) return false;
@@ -100,7 +99,6 @@ export function applyDamage(target, amount) {
   if (!target.alive) return;
   target.hp -= amount;
   target.hitFlash = 0.15;
-  playHit();
   if (target.hp <= 0) {
     target.hp = 0;
     target.alive = false;

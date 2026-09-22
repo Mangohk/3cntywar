@@ -1,54 +1,41 @@
 /**
- * Lite procedural SFX via Web Audio (no asset files).
- * Safe no-op under Node / missing AudioContext.
+ * Lightweight procedural SFX via Web Audio API (no asset files).
+ * Safe no-op in Node / when AudioContext is unavailable.
  */
 
 const STORAGE_KEY = "3cntywar-muted";
-const HIT_MIN_INTERVAL_MS = 70;
 
 /** @type {AudioContext | null} */
 let ctx = null;
-let muted = readMuted();
+let muted = false;
 let lastHitAt = 0;
-let unlocked = false;
+let lastDeathAt = 0;
 
-function readMuted() {
-  try {
-    return globalThis.localStorage?.getItem(STORAGE_KEY) === "1";
-  } catch {
-    return false;
-  }
+try {
+  muted = globalThis.localStorage?.getItem(STORAGE_KEY) === "1";
+} catch {
+  muted = false;
 }
 
-function writeMuted(value) {
-  try {
-    globalThis.localStorage?.setItem(STORAGE_KEY, value ? "1" : "0");
-  } catch {
-    /* ignore quota / private mode */
-  }
-}
-
-function canUseAudio() {
+function hasAudio() {
   return typeof globalThis.AudioContext === "function" || typeof globalThis.webkitAudioContext === "function";
 }
 
 function getCtx() {
-  if (!canUseAudio()) return null;
+  if (!hasAudio()) return null;
   if (!ctx) {
     const AC = globalThis.AudioContext || globalThis.webkitAudioContext;
     ctx = new AC();
   }
+  if (ctx.state === "suspended") {
+    ctx.resume().catch(() => {});
+  }
   return ctx;
 }
 
-/** Call from a user gesture so browsers allow playback. */
+/** Unlock audio on first user gesture (autoplay policies). */
 export function unlockAudio() {
-  const c = getCtx();
-  if (!c) return;
-  if (c.state === "suspended") {
-    c.resume().catch(() => {});
-  }
-  unlocked = true;
+  getCtx();
 }
 
 export function isMuted() {
@@ -57,7 +44,11 @@ export function isMuted() {
 
 export function setMuted(next) {
   muted = Boolean(next);
-  writeMuted(muted);
+  try {
+    globalThis.localStorage?.setItem(STORAGE_KEY, muted ? "1" : "0");
+  } catch {
+    /* ignore */
+  }
   if (!muted) unlockAudio();
   return muted;
 }
@@ -66,139 +57,112 @@ export function toggleMute() {
   return setMuted(!muted);
 }
 
-function masterGain(c, level) {
-  const g = c.createGain();
-  g.gain.value = muted || !unlocked ? 0 : level;
-  g.connect(c.destination);
-  return g;
-}
+/**
+ * @param {number} freq
+ * @param {number} duration
+ * @param {{ type?: OscillatorType, gain?: number, delay?: number, slideTo?: number }} [opts]
+ */
+function beep(freq, duration, opts = {}) {
+  if (muted) return;
+  const ac = getCtx();
+  if (!ac) return;
 
-function tone(c, { freq, dur = 0.12, type = "square", gain = 0.08, slideTo = null, delay = 0 }) {
-  const t0 = c.currentTime + delay;
-  const osc = c.createOscillator();
-  const g = c.createGain();
+  const type = opts.type || "square";
+  const gain = opts.gain ?? 0.05;
+  const delay = opts.delay ?? 0;
+  const t0 = ac.currentTime + delay;
+
+  const osc = ac.createOscillator();
+  const g = ac.createGain();
   osc.type = type;
   osc.frequency.setValueAtTime(freq, t0);
-  if (slideTo != null) {
-    osc.frequency.exponentialRampToValueAtTime(Math.max(1, slideTo), t0 + dur);
+  if (opts.slideTo != null) {
+    osc.frequency.exponentialRampToValueAtTime(Math.max(20, opts.slideTo), t0 + duration);
   }
+
   g.gain.setValueAtTime(0.0001, t0);
   g.gain.exponentialRampToValueAtTime(gain, t0 + 0.012);
-  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+
   osc.connect(g);
-  g.connect(masterGain(c, 1));
+  g.connect(ac.destination);
   osc.start(t0);
-  osc.stop(t0 + dur + 0.02);
+  osc.stop(t0 + duration + 0.02);
 }
 
-function noiseBurst(c, { dur = 0.08, gain = 0.05, delay = 0 }) {
-  const t0 = c.currentTime + delay;
-  const samples = Math.max(1, Math.floor(c.sampleRate * dur));
-  const buffer = c.createBuffer(1, samples, c.sampleRate);
+/** Soft noise burst (deploy / impact thud). */
+function thud(duration = 0.08, gain = 0.06) {
+  if (muted) return;
+  const ac = getCtx();
+  if (!ac) return;
+
+  const n = Math.floor(ac.sampleRate * duration);
+  const buffer = ac.createBuffer(1, n, ac.sampleRate);
   const data = buffer.getChannelData(0);
-  for (let i = 0; i < samples; i += 1) {
-    data[i] = (Math.random() * 2 - 1) * (1 - i / samples);
+  for (let i = 0; i < n; i++) {
+    data[i] = (Math.random() * 2 - 1) * (1 - i / n);
   }
-  const src = c.createBufferSource();
+
+  const src = ac.createBufferSource();
   src.buffer = buffer;
-  const g = c.createGain();
-  const filter = c.createBiquadFilter();
-  filter.type = "bandpass";
-  filter.frequency.value = 900;
-  filter.Q.value = 0.7;
+  const filter = ac.createBiquadFilter();
+  filter.type = "lowpass";
+  filter.frequency.value = 420;
+  const g = ac.createGain();
+  const t0 = ac.currentTime;
   g.gain.setValueAtTime(gain, t0);
-  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+
   src.connect(filter);
   filter.connect(g);
-  g.connect(masterGain(c, 1));
+  g.connect(ac.destination);
   src.start(t0);
-  src.stop(t0 + dur + 0.02);
 }
 
-function playSafe(fn) {
-  if (muted) return;
-  const c = getCtx();
-  if (!c || !unlocked) return;
-  if (c.state === "suspended") {
-    c.resume().catch(() => {});
-  }
-  try {
-    fn(c);
-  } catch {
-    /* ignore audio graph errors */
-  }
-}
-
-/** Successful card deploy. */
-export function playDeploy(side = "player") {
-  playSafe((c) => {
-    const base = side === "player" ? 420 : 320;
-    const gain = side === "player" ? 0.07 : 0.045;
-    tone(c, { freq: base, slideTo: base * 1.45, dur: 0.1, type: "triangle", gain });
-    tone(c, { freq: base * 1.5, dur: 0.06, type: "square", gain: gain * 0.45, delay: 0.04 });
-  });
-}
-
-/** Soft reject / invalid drop. */
-export function playInvalid() {
-  playSafe((c) => {
-    tone(c, { freq: 180, slideTo: 110, dur: 0.14, type: "sawtooth", gain: 0.045 });
-  });
-}
-
-/** Throttled melee / projectile hit tick. */
-export function playHit() {
-  const now = performance.now?.() ?? Date.now();
-  if (now - lastHitAt < HIT_MIN_INTERVAL_MS) return;
-  lastHitAt = now;
-  playSafe((c) => {
-    noiseBurst(c, { dur: 0.045, gain: 0.04 });
-    tone(c, { freq: 220 + Math.random() * 80, dur: 0.04, type: "square", gain: 0.03 });
-  });
-}
-
-/** Outpost destroyed. */
-export function playOutpostFall(friendlyLost = false) {
-  playSafe((c) => {
-    const low = friendlyLost ? 140 : 180;
-    tone(c, { freq: low, slideTo: low * 0.55, dur: 0.35, type: "sine", gain: 0.09 });
-    noiseBurst(c, { dur: 0.22, gain: friendlyLost ? 0.07 : 0.055, delay: 0.02 });
-    tone(c, {
-      freq: friendlyLost ? 260 : 360,
-      slideTo: friendlyLost ? 160 : 240,
-      dur: 0.2,
-      type: "triangle",
-      gain: 0.05,
-      delay: 0.08,
-    });
-  });
-}
-
-/** Sudden-death tempo shift. */
-export function playSudden() {
-  playSafe((c) => {
-    tone(c, { freq: 440, dur: 0.12, type: "square", gain: 0.06 });
-    tone(c, { freq: 554, dur: 0.12, type: "square", gain: 0.05, delay: 0.1 });
-    tone(c, { freq: 659, dur: 0.18, type: "square", gain: 0.055, delay: 0.2 });
-  });
-}
-
-/** Match end sting. */
-export function playOutcome(outcome) {
-  playSafe((c) => {
-    if (outcome === "win") {
-      tone(c, { freq: 392, dur: 0.14, type: "triangle", gain: 0.07 });
-      tone(c, { freq: 494, dur: 0.14, type: "triangle", gain: 0.07, delay: 0.12 });
-      tone(c, { freq: 587, dur: 0.28, type: "triangle", gain: 0.08, delay: 0.24 });
-      return;
-    }
-    if (outcome === "lose") {
-      tone(c, { freq: 330, slideTo: 180, dur: 0.35, type: "sawtooth", gain: 0.06 });
-      tone(c, { freq: 220, slideTo: 110, dur: 0.4, type: "triangle", gain: 0.05, delay: 0.12 });
-      return;
-    }
-    // draw / time-up
-    tone(c, { freq: 300, dur: 0.16, type: "triangle", gain: 0.05 });
-    tone(c, { freq: 300, dur: 0.2, type: "triangle", gain: 0.045, delay: 0.2 });
-  });
-}
+export const sfx = {
+  ui() {
+    beep(660, 0.05, { type: "triangle", gain: 0.035 });
+  },
+  deploy() {
+    thud(0.09, 0.07);
+    beep(180, 0.07, { type: "triangle", gain: 0.04, slideTo: 90 });
+  },
+  deny() {
+    beep(140, 0.1, { type: "sawtooth", gain: 0.03, slideTo: 90 });
+  },
+  hit() {
+    const now = performance.now?.() ?? Date.now();
+    if (now - lastHitAt < 55) return;
+    lastHitAt = now;
+    beep(320 + Math.random() * 80, 0.035, { type: "square", gain: 0.028 });
+  },
+  death() {
+    const now = performance.now?.() ?? Date.now();
+    if (now - lastDeathAt < 90) return;
+    lastDeathAt = now;
+    beep(220, 0.1, { type: "triangle", gain: 0.04, slideTo: 80 });
+  },
+  buildingHit() {
+    thud(0.06, 0.05);
+    beep(110, 0.08, { type: "square", gain: 0.03 });
+  },
+  buildingDestroy() {
+    thud(0.18, 0.1);
+    beep(160, 0.22, { type: "sawtooth", gain: 0.045, slideTo: 55 });
+  },
+  suddenDeath() {
+    beep(440, 0.12, { type: "triangle", gain: 0.05 });
+    beep(554, 0.14, { type: "triangle", gain: 0.045, delay: 0.1 });
+    beep(659, 0.18, { type: "triangle", gain: 0.04, delay: 0.2 });
+  },
+  win() {
+    beep(523, 0.12, { type: "triangle", gain: 0.05 });
+    beep(659, 0.12, { type: "triangle", gain: 0.05, delay: 0.1 });
+    beep(784, 0.22, { type: "triangle", gain: 0.055, delay: 0.2 });
+  },
+  lose() {
+    beep(392, 0.16, { type: "triangle", gain: 0.05 });
+    beep(311, 0.18, { type: "triangle", gain: 0.045, delay: 0.14 });
+    beep(233, 0.28, { type: "triangle", gain: 0.05, delay: 0.28 });
+  },
+};
