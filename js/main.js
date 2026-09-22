@@ -75,7 +75,9 @@ if (typeof ResizeObserver !== "undefined") {
   stageObserver.observe(canvas.parentElement);
 }
 
-ui.els.btnMute.addEventListener("click", () => {
+ui.els.btnMute.addEventListener("click", (evt) => {
+  evt.preventDefault();
+  evt.stopPropagation();
   toggleMute();
   syncMuteButton();
   if (!isMuted()) sfx.ui();

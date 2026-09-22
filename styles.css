@@ -119,8 +119,9 @@ body {
 }
 
 .btn-mute {
-  width: 36px;
-  height: 36px;
+  position: relative;
+  width: 40px;
+  height: 40px;
   padding: 0;
   border-radius: 10px;
   border: 1px solid rgba(226, 177, 74, 0.35);
@@ -129,7 +130,7 @@ body {
   cursor: pointer;
   display: grid;
   place-items: center;
-  font-size: 1rem;
+  font-size: 1.05rem;
   line-height: 1;
   transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
 }
@@ -142,33 +143,29 @@ body {
 }
 
 .btn-mute[aria-pressed="true"] {
-  color: rgba(239, 230, 212, 0.45);
-  border-color: rgba(239, 230, 212, 0.18);
-  background: rgba(26, 23, 20, 0.35);
-}
-
-.btn-mute[aria-pressed="true"] .btn-mute-icon {
-  opacity: 0.55;
-}
-
-.btn-mute[aria-pressed="true"] .btn-mute-icon::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 20px;
-  height: 2px;
-  margin-left: -10px;
-  margin-top: -1px;
-  background: currentColor;
-  transform: rotate(-42deg);
-  border-radius: 1px;
+  color: rgba(239, 230, 212, 0.5);
+  border-color: rgba(239, 230, 212, 0.2);
+  background: rgba(26, 23, 20, 0.4);
 }
 
 .btn-mute-icon {
-  position: relative;
   display: grid;
   place-items: center;
+}
+
+.btn-mute-slash {
+  display: none;
+  position: absolute;
+  width: 22px;
+  height: 2px;
+  border-radius: 1px;
+  background: currentColor;
+  transform: rotate(-42deg);
+  pointer-events: none;
+}
+
+.btn-mute[aria-pressed="true"] .btn-mute-slash {
+  display: block;
 }
 
 .match-meta {
