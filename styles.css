@@ -75,6 +75,43 @@ body {
   flex: 0 0 auto;
 }
 
+.top-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+
+.btn-mute {
+  appearance: none;
+  border: 1px solid rgba(226, 177, 74, 0.4);
+  background: rgba(26, 23, 20, 0.55);
+  color: var(--paper);
+  font: 600 0.72rem var(--font-body);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  min-width: 4.5rem;
+}
+
+.btn-mute:hover {
+  border-color: rgba(226, 177, 74, 0.7);
+  background: rgba(40, 34, 26, 0.75);
+}
+
+.btn-mute.is-muted {
+  opacity: 0.72;
+  border-color: rgba(180, 180, 180, 0.35);
+  color: rgba(239, 230, 212, 0.75);
+}
+
+.btn-mute:focus-visible {
+  outline: 2px solid var(--gold-bright);
+  outline-offset: 2px;
+}
+
 .brand {
   display: flex;
   align-items: center;

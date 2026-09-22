@@ -23,6 +23,12 @@ import {
 import { resolveProjectileImpact, tickAttacker } from "./combat.js";
 import { createAIState, updateAI } from "./ai.js";
 import { formatOutcomeFromCamps } from "./ui.js";
+import {
+  playDeploy,
+  playOutcome,
+  playOutpostFall,
+  playSudden,
+} from "./audio.js";
 
 export const Phase = {
   TITLE: "TITLE",
@@ -111,6 +117,7 @@ export function tryDeploy(game, side, x, y, handIndex = null) {
   match[qiKey] -= def.cost;
   playCardFromHand(handState, idx);
   match.units.push(...spawnCardUnits(cardId, side, x, y));
+  playDeploy(side);
 
   if (side === SIDE.PLAYER) {
     game.selectedHandIndex = null;
@@ -133,6 +140,7 @@ export function updateMatch(game, dt) {
       text: "Sudden Death",
       sub: "Qi regenerates twice as fast",
     });
+    playSudden();
   }
 
   const regen = match.suddenDeath ? QI_REGEN_SUDDEN_SEC : QI_REGEN_SEC;
@@ -212,12 +220,14 @@ function announceFallenOutposts(match) {
         text: `${laneName} Outpost Fallen`,
         sub: "Wei 营寨 destroyed",
       });
+      playOutpostFall(false);
     } else {
       setBanner(match, {
         kind: "outpost-lose",
         text: `${laneName} Outpost Lost`,
         sub: "Your 营寨 destroyed",
       });
+      playOutpostFall(true);
     }
   }
 }
@@ -234,4 +244,5 @@ function endMatch(game, outcome) {
   game.phase = Phase.MATCH_OVER;
   game.match.outcome = outcome;
   game.selectedHandIndex = null;
+  playOutcome(outcome);
 }

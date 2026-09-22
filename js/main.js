@@ -13,6 +13,12 @@ import { render } from "./render.js";
 import { bindInput, clientToBoard, validatePlayerDeploy } from "./input.js";
 import { createUI } from "./ui.js";
 import { SIDE } from "./board.js";
+import {
+  isMuted,
+  playInvalid,
+  toggleMute,
+  unlockAudio,
+} from "./audio.js";
 
 const canvas = document.getElementById("game-canvas");
 const ctx = canvas.getContext("2d");
@@ -60,9 +66,11 @@ if (typeof ResizeObserver !== "undefined") {
 }
 
 ui.els.btnStart.addEventListener("click", () => {
+  unlockAudio();
   beginMatch();
 });
 ui.els.btnRetry.addEventListener("click", () => {
+  unlockAudio();
   beginMatch();
 });
 ui.els.btnTitle.addEventListener("click", () => {
@@ -70,11 +78,18 @@ ui.els.btnTitle.addEventListener("click", () => {
   syncChrome();
   draw();
 });
+ui.els.btnMute?.addEventListener("click", () => {
+  unlockAudio();
+  const muted = toggleMute();
+  ui.syncMute(muted);
+});
+ui.syncMute(isMuted());
 
 ui.isMatchRunning = () => game.phase === Phase.MATCH_RUNNING;
 ui.pointToBoard = (clientX, clientY) => clientToBoard(canvas, clientX, clientY);
 
 ui.onDragStart = (index) => {
+  unlockAudio();
   // Lock the dragged card; do not toggle.
   game.selectedHandIndex = index;
   if (game.match) game.match.deployPreview = null;
@@ -102,6 +117,7 @@ ui.onDragEnd = (index, pos) => {
   const ok = tryDeploy(game, SIDE.PLAYER, pos.x, pos.y, index);
   if (!ok) {
     if (game.match) game.match.flashInvalid = { x: pos.x, y: pos.y, t: 0.35 };
+    playInvalid();
     ui.setHint(
       check.valid ? "Cannot deploy there." : "Invalid deploy — drop on your half of a lane.",
       true
@@ -212,3 +228,4 @@ requestAnimationFrame(frame);
 // Debug/testing hook
 window.__game = game;
 window.__ui = ui;
+window.__audio = { isMuted, toggleMute, unlockAudio };
