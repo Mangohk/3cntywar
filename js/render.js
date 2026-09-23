@@ -10,6 +10,9 @@ const COLORS = {
   laneLine: "rgba(255,255,255,0.12)",
   shu: "#3f8f5c",
   wei: "#5a7394",
+  weiWash: "#4a6280",
+  weiStroke: "#b7d0ef",
+  shuStroke: "#d8ffe0",
   hpOk: "#6dce6a",
   hpMid: "#e2b14a",
   hpLow: "#e05a4a",
@@ -177,22 +180,31 @@ function drawUnits(ctx, units, w, h) {
     if (!u.alive) continue;
     const p = toScreen(u.x, u.y, w, h);
     const r = Math.max(12, u.radius * w * 1.15);
+    const isEnemy = u.side === SIDE.ENEMY;
 
     ctx.beginPath();
     ctx.fillStyle = "rgba(0,0,0,0.28)";
     ctx.ellipse(p.x + 2, p.y + r * 0.55, r * 0.7, r * 0.28, 0, 0, Math.PI * 2);
     ctx.fill();
 
+    // Wei wash: cool blue-gray overlay so enemy side reads at a glance.
+    if (isEnemy && !(u.hitFlash > 0)) {
+      ctx.beginPath();
+      ctx.fillStyle = "rgba(74, 98, 128, 0.42)";
+      ctx.arc(p.x, p.y, r + 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
     ctx.beginPath();
-    ctx.fillStyle = u.hitFlash > 0 ? "#fff7df" : u.color;
+    ctx.fillStyle = unitBodyColor(u);
     ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = u.side === SIDE.PLAYER ? "#d8ffe0" : "#ffd4cc";
+    ctx.lineWidth = isEnemy ? 2.5 : 2;
+    ctx.strokeStyle = isEnemy ? COLORS.weiStroke : COLORS.shuStroke;
     ctx.stroke();
 
-    ctx.fillStyle = "#1a1714";
+    ctx.fillStyle = isEnemy ? "#0e1520" : "#1a1714";
     ctx.font = `700 ${Math.round(r)}px 'Songti SC', serif`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
@@ -200,6 +212,33 @@ function drawUnits(ctx, units, w, h) {
 
     drawHpBar(ctx, p.x, p.y - r - 8, r * 2, u.hp / u.maxHp);
   }
+}
+
+/** Player keeps card colors; Wei units lean blue-gray. */
+function unitBodyColor(u) {
+  if (u.hitFlash > 0) return "#fff7df";
+  if (u.side !== SIDE.ENEMY) return u.color;
+  return mixHex(u.color, COLORS.weiWash, 0.58);
+}
+
+/** @param {string} a @param {string} b @param {number} t amount of b mixed in */
+function mixHex(a, b, t) {
+  const pa = parseHex(a);
+  const pb = parseHex(b);
+  if (!pa || !pb) return a;
+  const m = (x, y) => Math.round(x + (y - x) * t);
+  const to = (n) => n.toString(16).padStart(2, "0");
+  return `#${to(m(pa.r, pb.r))}${to(m(pa.g, pb.g))}${to(m(pa.b, pb.b))}`;
+}
+
+function parseHex(hex) {
+  const h = hex.replace("#", "");
+  if (h.length !== 6) return null;
+  return {
+    r: parseInt(h.slice(0, 2), 16),
+    g: parseInt(h.slice(2, 4), 16),
+    b: parseInt(h.slice(4, 6), 16),
+  };
 }
 
 function drawProjectiles(ctx, projectiles, w, h) {
