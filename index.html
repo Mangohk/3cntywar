@@ -1,74 +1,93 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
-    />
-    <title>3cntywar — Three Countries War</title>
-    <link rel="stylesheet" href="styles.css" />
-  </head>
-  <body>
-    <div id="app">
-      <header class="top-bar">
-        <div class="brand">
-          <span class="brand-mark">叁</span>
-          <div>
-            <h1>3cntywar</h1>
-            <p class="tagline">三国战场 · Player vs Computer</p>
-          </div>
-        </div>
-        <div class="match-meta" id="match-meta" hidden>
-          <div class="timer" id="match-timer">0:00</div>
-          <div class="sudden-death" id="sudden-death" hidden>Sudden Death</div>
-        </div>
-      </header>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>三國誌版皇室戰爭 — POC v1.1</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <header class="top-bar">
+      <div class="brand">三國誌版皇室戰爭 <span class="tag">POC v1.1</span></div>
+      <div class="match-meta">
+        <span id="timer">3:00</span>
+        <span id="phase" class="phase">前哨</span>
+        <span id="crowns">👑 0 — 0</span>
+      </div>
+    </header>
 
-      <main class="stage">
-        <canvas id="game-canvas" width="420" height="720" aria-label="Battlefield"></canvas>
-
-        <section id="title-screen" class="overlay panel">
-          <div class="panel-inner">
-            <p class="eyebrow">Romance of the Three Kingdoms</p>
-            <h2>Three Countries War</h2>
-            <p class="lede">
-              Command Shu generals across two lanes. Spend regenerating Qi, smash Wei outposts,
-              and raze the enemy Main Camp.
-            </p>
-            <ul class="faction-row">
-              <li><span class="dot shu"></span> You — Shu</li>
-              <li><span class="dot wei"></span> AI — Wei</li>
-            </ul>
-            <button type="button" id="btn-start" class="btn primary">Start Battle</button>
-          </div>
-        </section>
-
-        <section id="result-screen" class="overlay panel" hidden>
-          <div class="panel-inner">
-            <p class="eyebrow" id="result-eyebrow">Match Over</p>
-            <h2 id="result-title">Victory</h2>
-            <p class="lede" id="result-detail">The enemy Main Camp has fallen.</p>
-            <div class="btn-row">
-              <button type="button" id="btn-retry" class="btn primary">Fight Again</button>
-              <button type="button" id="btn-title" class="btn ghost">Back to Title</button>
+    <main class="stage">
+      <aside class="enemy-info">
+        <div class="side-label enemy">敵方</div>
+        <div class="resource-stack enemy-res">
+          <div class="res-block junling" title="軍令：部署">
+            <div class="res-label">軍令</div>
+            <div class="res-track">
+              <div id="ai-junling-fill" class="res-fill"></div>
+              <span id="ai-junling-num" class="res-num">5</span>
             </div>
           </div>
-        </section>
-      </main>
-
-      <footer class="hud" id="hud" hidden>
-        <div class="qi-block">
-          <div class="qi-label">气 Qi <span id="qi-value">5</span>/10</div>
-          <div class="qi-track" aria-hidden="true">
-            <div class="qi-fill" id="qi-fill"></div>
+          <div class="res-block shiqi" title="士氣：計略">
+            <div class="res-label">士氣</div>
+            <div class="res-orb-wrap">
+              <div id="ai-shiqi-orb" class="shiqi-orb">
+                <div id="ai-shiqi-ring" class="shiqi-ring"></div>
+                <span id="ai-shiqi-num">0.0</span>
+              </div>
+              <div id="ai-shiqi-rate" class="shiqi-rate">蓄勢中</div>
+            </div>
           </div>
         </div>
-        <div class="hand" id="hand" role="listbox" aria-label="Card hand"></div>
-        <p class="hint" id="deploy-hint">Select a card, then tap your half of a lane.</p>
-      </footer>
-    </div>
+      </aside>
 
-    <script type="module" src="js/main.js"></script>
-  </body>
+      <div class="arena-wrap">
+        <canvas id="arena" width="420" height="640"></canvas>
+        <div id="banner" class="banner hidden"></div>
+        <div id="cast-flash" class="cast-flash hidden"></div>
+        <div id="toast" class="toast hidden"></div>
+      </div>
+
+      <aside class="player-info">
+        <div class="resource-stack player-res">
+          <div class="res-block junling" title="軍令：部署節奏">
+            <div class="res-label">軍令 <small>出兵</small></div>
+            <div class="res-track">
+              <div id="pl-junling-fill" class="res-fill"></div>
+              <span id="pl-junling-num" class="res-num">5</span>
+            </div>
+            <div id="leak-warn" class="leak-warn hidden">軍令已滿！</div>
+          </div>
+          <div class="res-block shiqi" title="士氣：蓄勢喊招">
+            <div class="res-label">士氣 <small>計略</small></div>
+            <div class="res-orb-wrap">
+              <div id="pl-shiqi-orb" class="shiqi-orb">
+                <div id="pl-shiqi-ring" class="shiqi-ring"></div>
+                <span id="pl-shiqi-num">0.5</span>
+              </div>
+              <div id="pl-shiqi-rate" class="shiqi-rate">+0.11/秒 · 蓄勢</div>
+              <div id="shiqi-hint" class="shiqi-hint">點場上武將開計略</div>
+            </div>
+          </div>
+        </div>
+        <div class="side-label player">我方</div>
+      </aside>
+    </main>
+
+    <footer class="hand-bar">
+      <div id="hand" class="hand"></div>
+      <p class="hint" id="hint">選牌 → 點左／右線部署｜點己方單位開計略</p>
+    </footer>
+
+    <div id="overlay" class="overlay">
+      <div class="overlay-card">
+        <h1>雙軌指揮</h1>
+        <p>軍令出兵 · 士氣翻盤<br />點手牌選將，再點己方半場左右線部署。<br />點場上己方武將開計略（士氣足夠時）。</p>
+        <button id="btn-start" type="button" data-action="start">開戰</button>
+        <p class="start-hotkey">或按 Enter / 空白鍵</p>
+      </div>
+    </div>
+  </div>
+  <script src="game.js"></script>
+</body>
 </html>
