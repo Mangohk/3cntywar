@@ -1,1 +1,452 @@
-:root { --test: 1; }
+:root {
+  --bg0: #1a2218;
+  --bg1: #2a3826;
+  --ink: #f2e8d5;
+  --muted: #a89a7e;
+  --junling: #d4a017;
+  --junling-deep: #8a6a0a;
+  --shiqi: #3ecf8e;
+  --shiqi-glow: #7dffc0;
+  --enemy: #c44b4b;
+  --player: #4a7ec8;
+  --lane: #3d4f38;
+  --river: #2a4a5c;
+  --bridge: #6b5a3e;
+  --panel: rgba(12, 16, 10, 0.82);
+  --font-display: "Noto Serif TC", "Source Han Serif TC", "Songti TC", "PMingLiU", serif;
+  --font-ui: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  background:
+    radial-gradient(ellipse at 30% 0%, #3a2e1a 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 100%, #1e2a22 0%, transparent 45%),
+    linear-gradient(180deg, #12180f 0%, #1c2618 100%);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  overflow: hidden;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#app {
+  max-width: 920px;
+  margin: 0 auto;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 8px 10px 6px;
+  gap: 6px;
+}
+
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.brand {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+  font-weight: 700;
+}
+
+.brand .tag {
+  font-family: var(--font-ui);
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--junling);
+  border: 1px solid var(--junling-deep);
+  padding: 1px 6px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.match-meta {
+  display: flex;
+  gap: 14px;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+
+#timer { color: var(--ink); font-weight: 700; min-width: 3.2em; text-align: right; }
+.phase {
+  color: var(--shiqi);
+  font-size: 0.8rem;
+  align-self: center;
+}
+.phase.double { color: #ffb347; }
+.phase.overtime { color: #ff6b6b; animation: pulse 0.8s infinite; }
+
+.stage {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 88px 1fr 88px;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.arena-wrap {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 0;
+}
+
+#arena {
+  width: auto;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  border: 2px solid #4a3c28;
+  box-shadow: 0 0 0 1px #2a2218, 0 8px 28px rgba(0,0,0,0.45);
+  background: #2d3a28;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.enemy-info, .player-info {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+}
+
+.side-label {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  letter-spacing: 0.2em;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  align-self: center;
+  opacity: 0.7;
+}
+.side-label.enemy { color: #e88; }
+.side-label.player { color: #8af; }
+
+.resource-stack { display: flex; flex-direction: column; gap: 14px; }
+
+/* 軍令 = horizontal CR-like bar (deploy rhythm) */
+.res-block.junling .res-label {
+  font-size: 0.72rem;
+  color: var(--junling);
+  margin-bottom: 4px;
+  letter-spacing: 0.08em;
+}
+.res-block.junling .res-label small { color: var(--muted); letter-spacing: 0; }
+.res-track {
+  position: relative;
+  height: 22px;
+  background: linear-gradient(180deg, #2a2208, #1a1505);
+  border: 2px solid var(--junling-deep);
+  overflow: hidden;
+}
+.res-fill {
+  height: 100%;
+  width: 50%;
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--junling),
+    var(--junling) 6px,
+    #e8c040 6px,
+    #e8c040 12px
+  );
+  transition: width 0.08s linear;
+}
+.res-num {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 0.85rem;
+  color: #1a1200;
+  text-shadow: 0 0 2px #fff8;
+}
+
+.leak-warn {
+  margin-top: 4px;
+  font-size: 0.65rem;
+  color: #ffcc44;
+  animation: pulse 0.7s infinite;
+}
+.leak-warn.hidden { display: none; }
+
+/* 士氣 = orb / seal (蓄勢喊招 — different sensory channel) */
+.res-block.shiqi .res-label {
+  font-size: 0.72rem;
+  color: var(--shiqi);
+  margin-bottom: 6px;
+  letter-spacing: 0.08em;
+}
+.res-block.shiqi .res-label small { color: var(--muted); letter-spacing: 0; }
+.res-orb-wrap { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.shiqi-orb {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: #062816;
+  background:
+    radial-gradient(circle at 35% 30%, var(--shiqi-glow), var(--shiqi) 55%, #1a6b45 100%);
+  border: 3px solid #0d4a30;
+  box-shadow: inset 0 -4px 8px rgba(0,0,0,0.25);
+  transition: box-shadow 0.2s, transform 0.15s;
+  overflow: hidden;
+}
+.shiqi-orb > span { position: relative; z-index: 2; }
+.shiqi-ring {
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  background: conic-gradient(var(--shiqi-glow) var(--shiqi-deg, 0%), transparent 0);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4px));
+  z-index: 1;
+  pointer-events: none;
+  transition: background 0.1s linear;
+}
+.shiqi-orb.ready {
+  box-shadow:
+    0 0 0 2px var(--shiqi-glow),
+    0 0 18px rgba(62, 207, 142, 0.65),
+    inset 0 -4px 8px rgba(0,0,0,0.25);
+  animation: seal-pulse 1.2s ease-in-out infinite;
+}
+.shiqi-orb.dim { filter: saturate(0.4) brightness(0.75); }
+.shiqi-rate {
+  font-size: 0.58rem;
+  color: var(--shiqi);
+  text-align: center;
+  line-height: 1.2;
+  max-width: 78px;
+  font-variant-numeric: tabular-nums;
+}
+.shiqi-hint {
+  font-size: 0.58rem;
+  color: var(--muted);
+  text-align: center;
+  line-height: 1.25;
+  max-width: 72px;
+}
+.shiqi-hint.flash { color: var(--shiqi-glow); }
+
+.toast {
+  position: absolute;
+  left: 50%;
+  bottom: 14%;
+  transform: translateX(-50%);
+  background: rgba(12, 16, 10, 0.92);
+  border: 1px solid #6a5430;
+  color: var(--ink);
+  padding: 8px 14px;
+  font-size: 0.85rem;
+  z-index: 8;
+  pointer-events: none;
+  white-space: nowrap;
+  max-width: 90%;
+  text-align: center;
+}
+.toast.bad { border-color: #c44; color: #ffb0b0; }
+.toast.good { border-color: var(--shiqi); color: var(--shiqi-glow); }
+.toast.hidden { display: none; }
+
+.cast-flash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 6;
+  background: radial-gradient(ellipse at center, rgba(125, 255, 192, 0.28), transparent 55%);
+  animation: cast-burst 0.45s ease-out forwards;
+}
+.cast-flash.lane-L {
+  background: radial-gradient(ellipse at 25% 60%, rgba(125, 255, 192, 0.35), transparent 50%);
+}
+.cast-flash.lane-R {
+  background: radial-gradient(ellipse at 75% 60%, rgba(125, 255, 192, 0.35), transparent 50%);
+}
+.cast-flash.hidden { display: none; animation: none; }
+
+@keyframes cast-burst {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.hand-bar {
+  flex-shrink: 0;
+  padding: 4px 0 2px;
+}
+.hand {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.card {
+  width: 92px;
+  min-height: 108px;
+  background: linear-gradient(165deg, #2c2418 0%, #1a1510 100%);
+  border: 2px solid #5a4a30;
+  padding: 6px 6px 8px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  transition: transform 0.12s, border-color 0.12s, box-shadow 0.12s;
+  position: relative;
+}
+.card:hover { border-color: var(--junling); }
+.card.selected {
+  border-color: #ffe08a;
+  transform: translateY(-6px);
+  box-shadow: 0 8px 16px rgba(0,0,0,0.4), 0 0 0 1px #ffe08a;
+}
+.card.disabled { opacity: 0.45; cursor: not-allowed; }
+.card .name {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+.card .meta {
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+.card .cost {
+  position: absolute;
+  top: -6px;
+  left: -6px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--junling);
+  color: #1a1200;
+  font-weight: 900;
+  font-size: 0.85rem;
+  display: grid;
+  place-items: center;
+  border: 2px solid #1a1200;
+}
+.card .strat {
+  margin-top: auto;
+  font-size: 0.62rem;
+  color: var(--shiqi);
+  line-height: 1.25;
+  border-top: 1px dashed #3a5040;
+  padding-top: 4px;
+}
+.card .type-騎 { color: #e8a0a0; }
+.card .type-槍 { color: #a0c8e8; }
+.card .type-弓 { color: #c8e8a0; }
+
+.hint {
+  text-align: center;
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin-top: 4px;
+  min-height: 1.2em;
+}
+
+.banner {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  transform: translate(-50%, -50%);
+  background: var(--panel);
+  border: 2px solid var(--junling);
+  padding: 14px 28px;
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  letter-spacing: 0.12em;
+  pointer-events: none;
+  z-index: 5;
+  white-space: nowrap;
+}
+.banner.hidden { display: none; }
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 10, 6, 0.82);
+  display: grid;
+  place-items: center;
+  z-index: 100;
+  pointer-events: auto;
+}
+.overlay.hidden { display: none !important; }
+.start-hotkey {
+  margin-top: 10px;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+.overlay-card {
+  background: linear-gradient(160deg, #2a2218, #14110c);
+  border: 2px solid #6a5430;
+  padding: 28px 32px;
+  max-width: 360px;
+  text-align: center;
+}
+.overlay-card h1 {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  margin-bottom: 12px;
+  letter-spacing: 0.15em;
+}
+.overlay-card p {
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.55;
+  margin-bottom: 20px;
+}
+.overlay-card button {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  letter-spacing: 0.2em;
+  padding: 14px 48px;
+  min-width: 160px;
+  min-height: 52px;
+  background: linear-gradient(180deg, #e0b840, #b88818);
+  border: 2px solid #1a1200;
+  color: #1a1200;
+  font-weight: 800;
+  cursor: pointer;
+  position: relative;
+  z-index: 2;
+}
+.overlay-card button:hover { filter: brightness(1.08); }
+.overlay-card button.secondary {
+  background: transparent;
+  color: var(--ink);
+  border-color: #6a5430;
+  margin-top: 10px;
+  font-size: 0.9rem;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+@keyframes seal-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+
+@media (max-width: 700px) {
+  .stage { grid-template-columns: 64px 1fr 64px; gap: 4px; }
+  .card { width: 72px; min-height: 96px; }
+  .shiqi-orb { width: 44px; height: 44px; font-size: 0.95rem; }
+  .brand { font-size: 0.85rem; }
+  .side-label { font-size: 0.7rem; }
+}
