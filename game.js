@@ -1,6 +1,6 @@
 /**
- * 三國誌版皇室戰爭 — POC v1.1
- * Dual-lane realtime auto-battler with 軍令 (deploy) + 士氣 (stratagem).
+ * 三國誌版皇室戰爭 — POC v1.2
+ * Open-field realtime auto-battler with 軍令 (deploy) + 士氣 (stratagem).
  */
 (() => {
   "use strict";
@@ -21,14 +21,17 @@
   const SHIQI_START = 0.5;
   const SHIQI_REGEN = 1 / 9.5; // slower → ~19 over 180s → ~2–4 casts
 
-  const AGGRO = 220;
-  const BRIDGE_Y = H / 2;
-  const RIVER_TOP = BRIDGE_Y - 28;
-  const RIVER_BOT = BRIDGE_Y + 28;
+  // Acquisition / aggro radius (world px). Units only lock troops inside this.
+  const AGGRO = 150;
+  const STICKY_LEASH = AGGRO * 1.75; // drop sticky troop chase beyond this
+  const MID_Y = H / 2;
+  const RIVER_TOP = MID_Y - 22;
+  const RIVER_BOT = MID_Y + 22;
 
-  // Arena geometry
-  const LANE_X = { L: 105, R: 315 };
+  // Arena geometry — open field; side towers still sit left/right
+  const TOWER_X = { L: 105, R: 315 };
   const MID_X = W / 2;
+  const FIELD_PAD = 28;
 
   // Tower HP (rough: one push can chip ~30–50% side tower with support)
   const TOWER = {
@@ -210,7 +213,7 @@
       : isPlayer
         ? H - 130
         : 130;
-    const x = isKing ? MID_X : LANE_X[lane];
+    const x = isKing ? MID_X : TOWER_X[lane];
     return {
       id: entitySeq++,
       kind: "tower",
@@ -229,16 +232,16 @@
   }
 
   // ── Deploy / units ────────────────────────────────────────────────
-  function deploy(side, cardId, lane, yHint) {
+  /** Tap any point in own half; x/y clamped to playable bounds. Soft left/right tag from x. */
+  function deploy(side, cardId, xHint, yHint) {
     const def = CARDS[cardId];
     if (!def || side.junling < def.cost - 0.001) return false;
     if (!side.hand.includes(cardId)) return false;
-    if (lane !== "L" && lane !== "R") return false;
 
-    // Deploy only on own half
+    // Deploy only on own half (mid river band is the midline)
     const halfOk = side.isPlayer
-      ? yHint >= BRIDGE_Y - 8
-      : yHint <= BRIDGE_Y + 8;
+      ? yHint >= MID_Y - 8
+      : yHint <= MID_Y + 8;
     if (!halfOk && side.isPlayer) return false;
 
     side.junling -= def.cost;
@@ -247,13 +250,15 @@
     side.hand.splice(idx, 1);
     side.hand.push(cardId);
 
-    const x = LANE_X[lane] + (Math.random() - 0.5) * 18;
+    let x = clamp(xHint ?? MID_X, FIELD_PAD, W - FIELD_PAD);
     let y;
     if (side.isPlayer) {
-      y = Math.max(BRIDGE_Y + 10, Math.min(H - 160, yHint || H - 200));
+      y = clamp(yHint || H - 200, MID_Y + 8, H - 150);
     } else {
-      y = Math.min(BRIDGE_Y - 10, Math.max(160, yHint || 200));
+      y = clamp(yHint || 200, 150, MID_Y - 8);
     }
+    // Soft region tag for AI pressure / tower labels only — not a movement rail
+    const lane = x < MID_X ? "L" : "R";
 
     const u = {
       id: entitySeq++,
@@ -398,15 +403,11 @@
     return Math.hypot(a.x - b.x, a.y - b.y);
   }
 
-  // ── Targeting (poc-v1-targeting.md) ───────────────────────────────
+  // ── Targeting (poc-v1-targeting.md — open field + aggroRange) ─────
   function validTroopTarget(self, e) {
     if (!e.alive) return false;
     if (e.stealth > 0) return false; // ganning: troops don't lock
     return true;
-  }
-
-  function sameLaneTroops(self, foes) {
-    return foes.filter((e) => e.alive && e.lane === self.lane && validTroopTarget(self, e));
   }
 
   function pickNearest(self, list) {
@@ -432,21 +433,27 @@
     return t && t.alive ? t : null;
   }
 
+  function aliveTowers(side) {
+    const out = [];
+    for (const key of ["L", "R", "K"]) {
+      const t = side.towers[key];
+      if (t?.alive) out.push(t);
+    }
+    return out;
+  }
+
+  function nearestEnemyTower(u) {
+    return pickNearest(u, aliveTowers(enemySide(u)));
+  }
+
   function acquireTarget(u) {
     const foes = enemyUnits(u);
     const es = enemySide(u);
 
     // Stratagem overrides — pause sticky
     if (u.strat?.kind === "rush") {
-      // prioritize nearest enemy building
-      const buildings = [];
-      for (const key of ["L", "R", "K"]) {
-        const t = es.towers[key];
-        if (t?.alive) buildings.push(t);
-      }
-      // prefer same-lane side tower if alive, else nearest
-      const same = sideTower(es, u.lane);
-      if (same) return same;
+      // prioritize nearest enemy building (open field — no bridge gate)
+      const buildings = aliveTowers(es);
       return pickNearest(u, buildings);
     }
     if (u.strat?.kind === "duel") {
@@ -455,54 +462,28 @@
         troops.sort((a, b) => b.hp - a.hp || a.id - b.id);
         return troops[0];
       }
-      return sideTower(es, u.lane) || kingTower(es);
+      return nearestEnemyTower(u);
     }
 
-    // §0 sticky
+    // §0 sticky current target until dead / invalid / out of reach
     if (u.target && isTargetValid(u, u.target)) return u.target;
 
-    // §1 same-lane nearest troop (within aggro + lane visibility)
-    const laneTroops = sameLaneTroops(u, foes).filter((e) => {
-      const d = dist(u, e);
-      return d < AGGRO || onSameHalfApproach(u, e);
-    });
-    const nearTroop = pickNearest(u, laneTroops);
+    // §1 nearest enemy troop within aggroRange (prefer units over towers)
+    const inAggro = foes.filter(
+      (e) => validTroopTarget(u, e) && dist(u, e) <= AGGRO
+    );
+    const nearTroop = pickNearest(u, inAggro);
     if (nearTroop) return nearTroop;
 
-    // §2 same-lane side tower (or king if side down)
-    const st = sideTower(es, u.lane);
-    if (st) return st;
-
-    // §3 king after side down
-    const king = kingTower(es);
-    if (king && !st) {
-      // only push king along this lane path once side is down
-      return king;
-    }
-
-    // §4 cross-lane only if crossed river and no same-lane targets
-    if (u.crossed) {
-      const any = foes.filter((e) => e.alive && validTroopTarget(u, e));
-      const n = pickNearest(u, any);
-      if (n) return n;
-      return king;
-    }
-    return king || st;
-  }
-
-  function onSameHalfApproach(u, e) {
-    // allow locking a bit past river on own lane
-    return e.lane === u.lane;
+    // §2 no troop in aggro → advance toward nearest enemy tower (open field)
+    return nearestEnemyTower(u);
   }
 
   function isTargetValid(u, t) {
     if (!t || !t.alive) return false;
     if (t.kind === "unit" && t.stealth > 0) return false;
     if (u.strat?.kind === "rush" && t.kind === "unit") return false;
-    if (t.kind === "unit") {
-      // sticky keeps even if slightly out of aggro
-      if (!u.crossed && t.lane !== u.lane) return false;
-    }
+    if (t.kind === "unit" && dist(u, t) > STICKY_LEASH) return false;
     return true;
   }
 
@@ -522,14 +503,13 @@
       }
     }
 
-    // crossed river?
+    // crossed mid (AI strat heuristic only — not a targeting gate)
     if (u.isPlayer && u.y < RIVER_TOP) u.crossed = true;
     if (!u.isPlayer && u.y > RIVER_BOT) u.crossed = true;
 
     u.target = acquireTarget(u);
     const t = u.target;
     if (!t) {
-      // march forward along lane
       march(u, dt);
       return;
     }
@@ -538,7 +518,7 @@
     const range = u.def.range;
 
     if (d > range) {
-      // move toward target, but prefer lane corridor until engaging
+      // free path across open field toward target
       moveToward(u, t.x, t.y, dt);
     } else {
       // attack
@@ -561,37 +541,25 @@
   }
 
   function march(u, dt) {
-    const tx = LANE_X[u.lane];
-    const ty = u.isPlayer ? 40 : H - 40;
-    // go to bridge first if not crossed
-    if (!u.crossed) {
-      const bridgeX = LANE_X[u.lane];
-      const bridgeY = BRIDGE_Y;
-      if (Math.abs(u.y - bridgeY) > 8) {
-        moveToward(u, bridgeX, bridgeY, dt);
-        return;
-      }
+    // Fallback: push toward enemy side / nearest tower across open field
+    const tower = nearestEnemyTower(u);
+    if (tower) {
+      moveToward(u, tower.x, tower.y, dt);
+      return;
     }
-    moveToward(u, tx, ty, dt);
+    moveToward(u, MID_X, u.isPlayer ? 40 : H - 40, dt);
   }
 
   function moveToward(u, tx, ty, dt) {
-    // pull slightly toward lane x while advancing
-    const lx = LANE_X[u.lane];
-    const aimX = tLerp(u.x, (tx + lx) / 2, 0.35);
-    const dx = aimX - u.x;
+    const dx = tx - u.x;
     const dy = ty - u.y;
     const len = Math.hypot(dx, dy) || 1;
     let spd = u.def.speed * (u.speedMul || 1);
     if (u.slow > 0) spd *= 0.55;
     u.x += (dx / len) * spd * dt;
     u.y += (dy / len) * spd * dt;
-    u.x = clamp(u.x, 30, W - 30);
+    u.x = clamp(u.x, FIELD_PAD, W - FIELD_PAD);
     u.y = clamp(u.y, 20, H - 20);
-  }
-
-  function tLerp(a, b, t) {
-    return a + (b - a) * t;
   }
 
   function doAttack(u, t) {
@@ -644,12 +612,8 @@
     if (!t.alive) return;
     t.atkCd -= dt;
     const foes = t.isPlayer ? ai.units : player.units;
-    // towers: nearest troop on same lane (king: any in range); towers can hit stealth ganning
-    let cand = foes.filter((e) => e.alive);
-    if (!t.isKing) {
-      cand = cand.filter((e) => e.lane === t.lane);
-    }
-    cand = cand.filter((e) => dist(t, e) <= TOWER.range);
+    // Towers: nearest in-range enemy unit (finite range — no map-wide vision)
+    const cand = foes.filter((e) => e.alive && dist(t, e) <= TOWER.range);
     const target = pickNearest(t, cand);
     t.target = target;
     if (target && t.atkCd <= 0) {
@@ -687,24 +651,22 @@
       }
     }
 
-    // Deploy
-    const pressureL = lanePressure("L");
-    const pressureR = lanePressure("R");
-    // positive = player advantage on that lane
-    let lane = Math.abs(pressureL) > Math.abs(pressureR) ? "L" : "R";
-    if (Math.random() < 0.25) lane = lane === "L" ? "R" : "L"; // occasional switch
+    // Deploy into a left/right region of own half (open field — free x within region)
+    const pressureL = regionPressure("L");
+    const pressureR = regionPressure("R");
+    let region = Math.abs(pressureL) > Math.abs(pressureR) ? "L" : "R";
+    if (Math.random() < 0.25) region = region === "L" ? "R" : "L";
 
-    // pick affordable card with role logic
     const affordable = ai.hand.filter((id) => CARDS[id].cost <= ai.junling + 0.01);
     if (!affordable.length) return;
 
     let pick = null;
-    const needTank = pressureOn(lane) > 0.5; // player pushing
+    const needTank = pressureOn(region) > 0.5; // player pushing that side
     const needCycle = ai.junling >= 7;
     if (needTank && affordable.includes("zhangfei")) pick = "zhangfei";
     else if (needTank && affordable.includes("guanyu")) pick = "guanyu";
-    else if (laneHas(player, lane, "zhangfei") && affordable.includes("huangzhong")) pick = "huangzhong";
-    else if (laneHas(player, lane, "huangzhong") && affordable.includes("ganning")) pick = "ganning";
+    else if (regionHas(player, region, "zhangfei") && affordable.includes("huangzhong")) pick = "huangzhong";
+    else if (regionHas(player, region, "huangzhong") && affordable.includes("ganning")) pick = "ganning";
     else if (needCycle && affordable.includes("ganning")) pick = "ganning";
     else pick = affordable.sort((a, b) => CARDS[b].cost - CARDS[a].cost)[0];
 
@@ -712,30 +674,32 @@
     // don't dump last elixir randomly early — slight hold
     if (ai.junling < CARDS[pick].cost + 0.5 && timeLeft > 140 && Math.random() < 0.4) return;
 
-    const y = 180 + Math.random() * 40;
-    deploy(ai, pick, lane, y);
+    const x =
+      region === "L"
+        ? 60 + Math.random() * 120
+        : W - 60 - Math.random() * 120;
+    const y = 160 + Math.random() * 70;
+    deploy(ai, pick, x, y);
 
-    // sometimes same-lane support
     if (pick === "zhangfei" && ai.junling >= 2 && ai.hand.includes("huangzhong") && Math.random() < 0.45) {
       ai.nextAiThink = 0.55;
     }
   }
 
-  function lanePressure(lane) {
+  function regionPressure(region) {
     let p = 0;
-    for (const u of player.units) if (u.alive && u.lane === lane) p += u.def.cost + u.hp / 400;
-    for (const u of ai.units) if (u.alive && u.lane === lane) p -= u.def.cost + u.hp / 400;
-    // tower damage threat
-    const pt = player.towers[lane];
-    const at = ai.towers[lane];
+    for (const u of player.units) if (u.alive && u.lane === region) p += u.def.cost + u.hp / 400;
+    for (const u of ai.units) if (u.alive && u.lane === region) p -= u.def.cost + u.hp / 400;
+    const pt = player.towers[region];
+    const at = ai.towers[region];
     if (pt && at) p += (at.maxHp - at.hp) / 500 - (pt.maxHp - pt.hp) / 500;
     return p;
   }
-  function pressureOn(lane) {
-    return lanePressure(lane);
+  function pressureOn(region) {
+    return regionPressure(region);
   }
-  function laneHas(side, lane, cardId) {
-    return side.units.some((u) => u.alive && u.lane === lane && u.cardId === cardId);
+  function regionHas(side, region, cardId) {
+    return side.units.some((u) => u.alive && u.lane === region && u.cardId === cardId);
   }
 
   // ── Resources / match flow ────────────────────────────────────────
@@ -882,24 +846,21 @@
       ctx.globalAlpha = 1;
     }
 
-    // Deploy zones: both own-half lanes when a card is selected
+    // Deploy zone: full own half when a card is selected
     if (selectedCard && running && !ended) {
       const pulse = 0.1 + 0.06 * Math.sin(animT * 4);
-      for (const lane of ["L", "R"]) {
-        const lx = LANE_X[lane];
-        const active = deployGhost && deployGhost.lane === lane;
-        ctx.fillStyle = active
-          ? `rgba(255, 220, 120, ${0.18 + pulse})`
-          : `rgba(255, 220, 120, ${0.08 + pulse * 0.5})`;
-        ctx.fillRect(lx - 52, BRIDGE_Y + 4, 104, H - BRIDGE_Y - 24);
-        ctx.strokeStyle = active ? "rgba(255, 224, 138, 0.85)" : "rgba(255, 224, 138, 0.4)";
-        ctx.lineWidth = active ? 2 : 1;
-        ctx.strokeRect(lx - 52, BRIDGE_Y + 4, 104, H - BRIDGE_Y - 24);
-        ctx.fillStyle = active ? "#ffe08a" : "rgba(255,224,138,0.7)";
-        ctx.font = "bold 13px sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText(lane === "L" ? "左線部署" : "右線部署", lx, BRIDGE_Y + 28);
-      }
+      const active = !!deployGhost;
+      ctx.fillStyle = active
+        ? `rgba(255, 220, 120, ${0.14 + pulse})`
+        : `rgba(255, 220, 120, ${0.07 + pulse * 0.5})`;
+      ctx.fillRect(FIELD_PAD - 8, MID_Y + 4, W - (FIELD_PAD - 8) * 2, H - MID_Y - 28);
+      ctx.strokeStyle = active ? "rgba(255, 224, 138, 0.85)" : "rgba(255, 224, 138, 0.4)";
+      ctx.lineWidth = active ? 2 : 1;
+      ctx.strokeRect(FIELD_PAD - 8, MID_Y + 4, W - (FIELD_PAD - 8) * 2, H - MID_Y - 28);
+      ctx.fillStyle = active ? "#ffe08a" : "rgba(255,224,138,0.7)";
+      ctx.font = "bold 13px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("己方半場部署", MID_X, MID_Y + 28);
       if (deployGhost) {
         const def = CARDS[selectedCard];
         ctx.globalAlpha = 0.4;
@@ -913,7 +874,7 @@
   }
 
   function drawField() {
-    // grass bands
+    // open grass field
     const grd = ctx.createLinearGradient(0, 0, 0, H);
     grd.addColorStop(0, "#3a4a32");
     grd.addColorStop(0.5, "#324028");
@@ -921,44 +882,32 @@
     ctx.fillStyle = grd;
     ctx.fillRect(0, 0, W, H);
 
+    // subtle field texture (no lane rails)
+    ctx.strokeStyle = "rgba(200,180,120,0.05)";
+    ctx.lineWidth = 1;
+    for (let y = 40; y < H; y += 36) {
+      ctx.beginPath();
+      ctx.moveTo(16, y);
+      ctx.lineTo(W - 16, y);
+      ctx.stroke();
+    }
+
     // enemy / player tint
     ctx.fillStyle = "rgba(180,60,60,0.08)";
     ctx.fillRect(0, 0, W, RIVER_TOP);
     ctx.fillStyle = "rgba(60,100,180,0.08)";
     ctx.fillRect(0, RIVER_BOT, W, H - RIVER_BOT);
 
-    // lanes
-    for (const lane of ["L", "R"]) {
-      const x = LANE_X[lane];
-      ctx.strokeStyle = "rgba(200,180,120,0.12)";
-      ctx.lineWidth = 36;
-      ctx.beginPath();
-      ctx.moveTo(x, 20);
-      ctx.lineTo(x, H - 20);
-      ctx.stroke();
-    }
-
-    // river
+    // river band (visual only — no bridges / chokepoints)
     ctx.fillStyle = "#2a4a5c";
     ctx.fillRect(0, RIVER_TOP, W, RIVER_BOT - RIVER_TOP);
     ctx.fillStyle = "rgba(120,180,200,0.15)";
-    ctx.fillRect(0, RIVER_TOP + 8, W, 6);
+    ctx.fillRect(0, RIVER_TOP + 6, W, 5);
 
-    // bridges
-    for (const lane of ["L", "R"]) {
-      const x = LANE_X[lane];
-      ctx.fillStyle = "#6b5a3e";
-      ctx.fillRect(x - 28, BRIDGE_Y - 16, 56, 32);
-      ctx.strokeStyle = "#3a3020";
-      ctx.strokeRect(x - 28, BRIDGE_Y - 16, 56, 32);
-    }
-
-    // midline label
-    ctx.fillStyle = "rgba(242,232,213,0.25)";
+    ctx.fillStyle = "rgba(242,232,213,0.28)";
     ctx.font = "12px serif";
     ctx.textAlign = "center";
-    ctx.fillText("左線", LANE_X.L, BRIDGE_Y + 4);
-    ctx.fillText("右線", LANE_X.R, BRIDGE_Y + 4);
+    ctx.fillText("開闊戰場", MID_X, MID_Y + 4);
   }
 
   function drawTowers(towers, isPlayer) {
@@ -1306,8 +1255,8 @@
         }
         selectedCard = selectedCard === id ? null : id;
         document.getElementById("hint").textContent = selectedCard
-          ? `部署 ${def.name}：點己方半場左／右線`
-          : "選牌 → 點左／右線部署｜點己方單位開計略";
+          ? `部署 ${def.name}：點己方半場任意位置`
+          : "選牌 → 點己方半場部署｜點己方單位開計略";
         renderHand();
       };
       el.appendChild(card);
@@ -1331,10 +1280,6 @@
       x: (src.clientX - rect.left) * scaleX,
       y: (src.clientY - rect.top) * scaleY,
     };
-  }
-
-  function laneFromX(x) {
-    return x < MID_X ? "L" : "R";
   }
 
   function unitAt(side, x, y) {
@@ -1394,16 +1339,15 @@
       return;
     }
 
-    if (p.y < BRIDGE_Y - 4) {
+    if (p.y < MID_Y - 4) {
       const msg = "只能部署在己方半場（高亮區）";
       document.getElementById("hint").textContent = msg;
       showToast(msg, "bad", 1.4);
       return;
     }
-    const lane = laneFromX(p.x);
-    if (deploy(player, selectedCard, lane, p.y)) {
+    if (deploy(player, selectedCard, p.x, p.y)) {
       selectedCard = null;
-      document.getElementById("hint").textContent = "選牌 → 點左／右線部署｜點己方單位開計略";
+      document.getElementById("hint").textContent = "選牌 → 點己方半場部署｜點己方單位開計略";
       syncUI();
     } else {
       showToast("軍令不足或無法部署", "bad", 1.3);
@@ -1416,11 +1360,14 @@
       return;
     }
     const p = canvasPos(ev);
-    if (p.y < BRIDGE_Y - 4) {
+    if (p.y < MID_Y - 4) {
       deployGhost = null;
       return;
     }
-    deployGhost = { x: LANE_X[laneFromX(p.x)], y: p.y, lane: laneFromX(p.x) };
+    deployGhost = {
+      x: clamp(p.x, FIELD_PAD, W - FIELD_PAD),
+      y: clamp(p.y, MID_Y + 8, H - 150),
+    };
   });
 
   // ── Boot ──────────────────────────────────────────────────────────
