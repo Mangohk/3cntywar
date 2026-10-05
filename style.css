@@ -294,6 +294,28 @@ html, body {
   gap: 8px;
   flex-wrap: wrap;
 }
+.hand-meta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 2px;
+  min-height: 1.4em;
+}
+.unit-cap {
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  border: 1px solid #5a4a30;
+  padding: 2px 8px;
+  background: rgba(0, 0, 0, 0.25);
+}
+.unit-cap.full {
+  color: #ffb0b0;
+  border-color: #a44;
+  background: rgba(80, 20, 20, 0.35);
+}
 .card {
   width: 92px;
   min-height: 108px;
@@ -314,6 +336,12 @@ html, body {
   box-shadow: 0 8px 16px rgba(0,0,0,0.4), 0 0 0 1px #ffe08a;
 }
 .card.disabled { opacity: 0.45; cursor: not-allowed; }
+.card.at-cap {
+  opacity: 0.4;
+  cursor: not-allowed;
+  filter: grayscale(0.35);
+}
+.card.at-cap:hover { border-color: #5a4a30; }
 .card .name {
   font-family: var(--font-display);
   font-size: 0.95rem;
@@ -354,7 +382,7 @@ html, body {
   text-align: center;
   font-size: 0.72rem;
   color: var(--muted);
-  margin-top: 4px;
+  margin: 0;
   min-height: 1.2em;
 }
 
