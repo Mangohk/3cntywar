@@ -1,6 +1,7 @@
 /**
- * 三國誌版皇室戰爭 — POC v1.2
+ * 三國誌版皇室戰爭 — POC v1.3
  * Open-field realtime auto-battler with 軍令 (deploy) + 士氣 (stratagem).
+ * v1.3: 2-unit field cap + slower pacing (costs / move / atk / regens).
  */
 (() => {
   "use strict";
@@ -10,16 +11,20 @@
   const H = 640;
   const MATCH_SEC = 180;
   const OVERTIME_SEC = 60;
-  const DOUBLE_AT = 120; // remaining → double 軍令 after ~60s into match
+  // Double 軍令 when timeLeft <= MATCH_SEC - DOUBLE_AT (last 40s; longer early phase)
+  const DOUBLE_AT = 140;
 
   const JUNLING_CAP = 10;
   const JUNLING_START = 5;
-  const JUNLING_REGEN = 1 / 2.8; // per second
-  const JUNLING_REGEN_DBL = 1 / 1.4;
+  const JUNLING_REGEN = 1 / 3.4; // per second (~18% slower than v1.2's 1/2.8)
+  const JUNLING_REGEN_DBL = 1 / 1.7;
 
   const SHIQI_CAP = 10;
   const SHIQI_START = 0.5;
-  const SHIQI_REGEN = 1 / 9.5; // slower → ~19 over 180s → ~2–4 casts
+  const SHIQI_REGEN = 1 / 11.5; // slower → fewer constant stratagems
+
+  // Max living units per side on the field at once
+  const MAX_FIELD_UNITS = 2;
 
   // Acquisition / aggro radius (world px). Units only lock troops inside this.
   const AGGRO = 150;
@@ -33,10 +38,13 @@
   const MID_X = W / 2;
   const FIELD_PAD = 28;
 
-  // Tower HP (rough: one push can chip ~30–50% side tower with support)
+  // Unit→tower damage multiplier (lower = pushes last longer)
+  const UNIT_VS_TOWER = 0.78;
+
+  // Tower HP (slightly higher so pushes last longer)
   const TOWER = {
-    sideHp: 1400,
-    kingHp: 2400,
+    sideHp: 1550,
+    kingHp: 2650,
     sideDps: 55,
     kingDps: 70,
     range: 110,
@@ -55,14 +63,14 @@
       id: "ganning",
       name: "甘寧",
       type: "騎",
-      cost: 1,
+      cost: 2, // was 1 — still cheapest cycle
       stratCost: 3,
       stratName: "錦帆奇襲",
       stratDesc: "加速衝塔・部隊不鎖",
       hp: 280,
       dmg: 48,
-      atkCd: 0.55,
-      speed: 78,
+      atkCd: 0.72, // was 0.55
+      speed: 56, // was 78 (~28% slower)
       range: 22,
       radius: 12,
       color: "#c96a6a",
@@ -72,14 +80,14 @@
       id: "zhangfei",
       name: "張飛",
       type: "槍",
-      cost: 3,
+      cost: 4, // was 3 — still most expensive
       stratCost: 5,
       stratName: "燕人咆哮",
       stratDesc: "錐形擊退＋緩速",
       hp: 980,
       dmg: 72,
-      atkCd: 0.9,
-      speed: 42,
+      atkCd: 1.15, // was 0.9
+      speed: 30, // was 42
       range: 26,
       radius: 16,
       color: "#5a8ec8",
@@ -89,14 +97,14 @@
       id: "huangzhong",
       name: "黃忠",
       type: "弓",
-      cost: 2,
+      cost: 3, // was 2
       stratCost: 4,
       stratName: "百步穿楊",
       stratDesc: "點殺最高威脅",
       hp: 320,
       dmg: 95,
-      atkCd: 1.05,
-      speed: 38,
+      atkCd: 1.35, // was 1.05
+      speed: 27, // was 38
       range: 120,
       radius: 12,
       color: "#7aad4a",
@@ -107,14 +115,14 @@
       id: "guanyu",
       name: "關羽",
       type: "騎",
-      cost: 2,
+      cost: 3, // was 2
       stratCost: 6,
       stratName: "過關斬將",
       stratDesc: "強化・鎖最高血",
       hp: 620,
       dmg: 88,
-      atkCd: 0.75,
-      speed: 58,
+      atkCd: 0.95, // was 0.75
+      speed: 42, // was 58
       range: 24,
       radius: 14,
       color: "#c85050",
@@ -232,11 +240,20 @@
   }
 
   // ── Deploy / units ────────────────────────────────────────────────
+  function livingCount(side) {
+    return side.units.filter((u) => u.alive).length;
+  }
+
+  function atUnitCap(side) {
+    return livingCount(side) >= MAX_FIELD_UNITS;
+  }
+
   /** Tap any point in own half; x/y clamped to playable bounds. Soft left/right tag from x. */
   function deploy(side, cardId, xHint, yHint) {
     const def = CARDS[cardId];
     if (!def || side.junling < def.cost - 0.001) return false;
     if (!side.hand.includes(cardId)) return false;
+    if (atUnitCap(side)) return false;
 
     // Deploy only on own half (mid river band is the midline)
     const halfOk = side.isPlayer
@@ -585,7 +602,7 @@
       if (t.hp <= 0) killUnit(t);
     } else {
       // tower
-      t.hp -= dmg * 0.85;
+      t.hp -= dmg * UNIT_VS_TOWER;
       if (t.hp <= 0) destroyTower(t);
     }
   }
@@ -651,6 +668,9 @@
       }
     }
 
+    // Field cap: AI will not deploy past MAX_FIELD_UNITS living units
+    if (atUnitCap(ai)) return;
+
     // Deploy into a left/right region of own half (open field — free x within region)
     const pressureL = regionPressure("L");
     const pressureR = regionPressure("R");
@@ -681,7 +701,13 @@
     const y = 160 + Math.random() * 70;
     deploy(ai, pick, x, y);
 
-    if (pick === "zhangfei" && ai.junling >= 2 && ai.hand.includes("huangzhong") && Math.random() < 0.45) {
+    if (
+      pick === "zhangfei" &&
+      !atUnitCap(ai) &&
+      ai.junling >= CARDS.huangzhong.cost &&
+      ai.hand.includes("huangzhong") &&
+      Math.random() < 0.45
+    ) {
       ai.nextAiThink = 0.55;
     }
   }
@@ -703,7 +729,7 @@
   }
 
   // ── Resources / match flow ────────────────────────────────────────
-  // Double 軍令 at ~2/3 match (after 120s → timeLeft <= 60)
+  // Double 軍令 in late match (after DOUBLE_AT seconds → timeLeft <= MATCH_SEC - DOUBLE_AT)
   function isDouble() {
     return overtime || timeLeft <= MATCH_SEC - DOUBLE_AT;
   }
@@ -1197,6 +1223,20 @@
         ? "蓄勢中…"
         : "先出兵再蓄勢";
 
+    // Unit-cap indicator under hand hint (don't overwrite active deploy/cast tips)
+    const capEl = document.getElementById("unit-cap");
+    if (capEl) {
+      const n = livingCount(player);
+      capEl.textContent = `場上 ${n}/${MAX_FIELD_UNITS}`;
+      capEl.classList.toggle("full", n >= MAX_FIELD_UNITS);
+    }
+
+    if (atUnitCap(player) && selectedCard) {
+      selectedCard = null;
+      document.getElementById("hint").textContent =
+        `場上已滿（${MAX_FIELD_UNITS}/${MAX_FIELD_UNITS}）— 等部隊倒下再出兵`;
+    }
+
     renderHand();
   }
 
@@ -1234,13 +1274,21 @@
   function renderHand() {
     const el = document.getElementById("hand");
     el.innerHTML = "";
+    const capped = atUnitCap(player);
     for (const id of player.hand) {
       const def = CARDS[id];
       const card = document.createElement("button");
       card.type = "button";
       card.className = "card";
       if (selectedCard === id) card.classList.add("selected");
-      if (player.junling < def.cost) card.classList.add("disabled");
+      const noJunling = player.junling < def.cost;
+      if (noJunling || capped) card.classList.add("disabled");
+      if (capped) card.classList.add("at-cap");
+      card.title = capped
+        ? `場上最多 ${MAX_FIELD_UNITS} 名武將`
+        : noJunling
+          ? "軍令不足"
+          : `部署 ${def.name}`;
       card.innerHTML = `
         <span class="cost">${def.cost}</span>
         <span class="name">${def.name}</span>
@@ -1249,8 +1297,17 @@
       `;
       card.onclick = () => {
         if (ended || !running) return;
+        if (capped) {
+          const msg = `場上最多 ${MAX_FIELD_UNITS} 名武將`;
+          document.getElementById("hint").textContent =
+            `場上已滿（${MAX_FIELD_UNITS}/${MAX_FIELD_UNITS}）— 等部隊倒下再出兵`;
+          showToast(msg, "bad", 1.5);
+          beep(160, 0.05, "triangle", 0.03);
+          return;
+        }
         if (player.junling < def.cost) {
           document.getElementById("hint").textContent = "軍令不足";
+          showToast("軍令不足", "bad", 1.2);
           return;
         }
         selectedCard = selectedCard === id ? null : id;
@@ -1339,6 +1396,17 @@
       return;
     }
 
+    if (atUnitCap(player)) {
+      const msg = `場上最多 ${MAX_FIELD_UNITS} 名武將`;
+      selectedCard = null;
+      document.getElementById("hint").textContent =
+        `場上已滿（${MAX_FIELD_UNITS}/${MAX_FIELD_UNITS}）— 等部隊倒下再出兵`;
+      showToast(msg, "bad", 1.5);
+      beep(160, 0.05, "triangle", 0.03);
+      syncUI();
+      return;
+    }
+
     if (p.y < MID_Y - 4) {
       const msg = "只能部署在己方半場（高亮區）";
       document.getElementById("hint").textContent = msg;
@@ -1347,7 +1415,11 @@
     }
     if (deploy(player, selectedCard, p.x, p.y)) {
       selectedCard = null;
-      document.getElementById("hint").textContent = "選牌 → 點己方半場部署｜點己方單位開計略";
+      const n = livingCount(player);
+      document.getElementById("hint").textContent =
+        n >= MAX_FIELD_UNITS
+          ? `場上已滿（${n}/${MAX_FIELD_UNITS}）— 等部隊倒下再出兵`
+          : "選牌 → 點己方半場部署｜點己方單位開計略";
       syncUI();
     } else {
       showToast("軍令不足或無法部署", "bad", 1.3);
