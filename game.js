@@ -1,7 +1,8 @@
 /**
- * 三國誌版皇室戰爭 — POC v1.3
+ * 三國誌版皇室戰爭 — POC v1.4
  * Open-field realtime auto-battler with 軍令 (deploy) + 士氣 (stratagem).
  * v1.3: 2-unit field cap + slower pacing (costs / move / atk / regens).
+ * v1.4: shorter aggro (90) + building lock only after mid-field.
  */
 (() => {
   "use strict";
@@ -27,8 +28,9 @@
   const MAX_FIELD_UNITS = 2;
 
   // Acquisition / aggro radius (world px). Units only lock troops inside this.
-  const AGGRO = 150;
-  const STICKY_LEASH = AGGRO * 1.75; // drop sticky troop chase beyond this
+  // v1.4: cut from 150 → 90 so nearby troops matter more than distant towers.
+  const AGGRO = 90;
+  const STICKY_LEASH = AGGRO * 1.75; // drop sticky troop chase beyond this (~157.5)
   const MID_Y = H / 2;
   const RIVER_TOP = MID_Y - 22;
   const RIVER_BOT = MID_Y + 22;
@@ -463,6 +465,11 @@
     return pickNearest(u, aliveTowers(enemySide(u)));
   }
 
+  /** True once the unit has crossed the mid river / half-field line toward the enemy. */
+  function hasCrossedMid(u) {
+    return u.isPlayer ? u.y < MID_Y : u.y > MID_Y;
+  }
+
   function acquireTarget(u) {
     const foes = enemyUnits(u);
     const es = enemySide(u);
@@ -479,7 +486,8 @@
         troops.sort((a, b) => b.hp - a.hp || a.id - b.id);
         return troops[0];
       }
-      return nearestEnemyTower(u);
+      // Building lock still gated by mid-field (計略 does not skip the half-line)
+      return hasCrossedMid(u) ? nearestEnemyTower(u) : null;
     }
 
     // §0 sticky current target until dead / invalid / out of reach
@@ -492,7 +500,8 @@
     const nearTroop = pickNearest(u, inAggro);
     if (nearTroop) return nearTroop;
 
-    // §2 no troop in aggro → advance toward nearest enemy tower (open field)
+    // §2 building lock only after crossing half-field; else march with no lock
+    if (!hasCrossedMid(u)) return null;
     return nearestEnemyTower(u);
   }
 
@@ -501,6 +510,8 @@
     if (t.kind === "unit" && t.stealth > 0) return false;
     if (u.strat?.kind === "rush" && t.kind === "unit") return false;
     if (t.kind === "unit" && dist(u, t) > STICKY_LEASH) return false;
+    // Drop sticky tower lock if we somehow still hold one before mid
+    if (t.kind === "tower" && u.strat?.kind !== "rush" && !hasCrossedMid(u)) return false;
     return true;
   }
 
@@ -520,7 +531,7 @@
       }
     }
 
-    // crossed mid (AI strat heuristic only — not a targeting gate)
+    // crossed flag for AI strat heuristics (building lock uses live hasCrossedMid)
     if (u.isPlayer && u.y < RIVER_TOP) u.crossed = true;
     if (!u.isPlayer && u.y > RIVER_BOT) u.crossed = true;
 
