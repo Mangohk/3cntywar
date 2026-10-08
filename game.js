@@ -1,8 +1,9 @@
 /**
- * 三國誌版皇室戰爭 — POC v1.4
+ * 三國誌版皇室戰爭 — POC v1.5
  * Open-field realtime auto-battler with 軍令 (deploy) + 士氣 (stratagem).
  * v1.3: 2-unit field cap + slower pacing (costs / move / atk / regens).
  * v1.4: shorter aggro (90) + building lock only after mid-field.
+ * v1.5: per-unit aggro = attack range + 10 (no global AGGRO).
  */
 (() => {
   "use strict";
@@ -27,10 +28,16 @@
   // Max living units per side on the field at once
   const MAX_FIELD_UNITS = 2;
 
-  // Acquisition / aggro radius (world px). Units only lock troops inside this.
-  // v1.4: cut from 150 → 90 so nearby troops matter more than distant towers.
-  const AGGRO = 90;
-  const STICKY_LEASH = AGGRO * 1.75; // drop sticky troop chase beyond this (~157.5)
+  // Acquisition / aggro = that unit's attack range + 10 (per unit, not global).
+  // Sticky leash scales with aggro so melee doesn't chase across the map.
+  const AGGRO_PAD = 10;
+  const STICKY_LEASH_MUL = 1.75;
+  function aggroRange(u) {
+    return (u.def?.range ?? u.range ?? 0) + AGGRO_PAD;
+  }
+  function stickyLeash(u) {
+    return aggroRange(u) * STICKY_LEASH_MUL;
+  }
   const MID_Y = H / 2;
   const RIVER_TOP = MID_Y - 22;
   const RIVER_BOT = MID_Y + 22;
@@ -493,9 +500,10 @@
     // §0 sticky current target until dead / invalid / out of reach
     if (u.target && isTargetValid(u, u.target)) return u.target;
 
-    // §1 nearest enemy troop within aggroRange (prefer units over towers)
+    // §1 nearest enemy troop within per-unit aggroRange (prefer units over towers)
+    const aggro = aggroRange(u);
     const inAggro = foes.filter(
-      (e) => validTroopTarget(u, e) && dist(u, e) <= AGGRO
+      (e) => validTroopTarget(u, e) && dist(u, e) <= aggro
     );
     const nearTroop = pickNearest(u, inAggro);
     if (nearTroop) return nearTroop;
@@ -509,7 +517,7 @@
     if (!t || !t.alive) return false;
     if (t.kind === "unit" && t.stealth > 0) return false;
     if (u.strat?.kind === "rush" && t.kind === "unit") return false;
-    if (t.kind === "unit" && dist(u, t) > STICKY_LEASH) return false;
+    if (t.kind === "unit" && dist(u, t) > stickyLeash(u)) return false;
     // Drop sticky tower lock if we somehow still hold one before mid
     if (t.kind === "tower" && u.strat?.kind !== "rush" && !hasCrossedMid(u)) return false;
     return true;
