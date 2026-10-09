@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <title>三國誌版皇室戰爭 — POC v1.5</title>
+  <title>三國誌版皇室戰爭 — POC v1.6</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div id="app">
     <header class="top-bar">
-      <div class="brand">三國誌版皇室戰爭 <span class="tag">POC v1.5</span></div>
+      <div class="brand">三國誌版皇室戰爭 <span class="tag">POC v1.6</span></div>
       <div class="match-meta">
         <span id="timer">3:00</span>
         <span id="phase" class="phase">前哨</span>
@@ -49,47 +49,36 @@
       </div>
 
       <aside class="player-info">
+        <div class="side-label player">我方</div>
         <div class="resource-stack player-res">
-          <div class="res-block junling" title="軍令：部署節奏">
-            <div class="res-label">軍令 <small>出兵</small></div>
+          <div class="res-block junling" title="軍令：部署">
+            <div class="res-label">軍令</div>
             <div class="res-track">
               <div id="pl-junling-fill" class="res-fill"></div>
               <span id="pl-junling-num" class="res-num">5</span>
             </div>
-            <div id="leak-warn" class="leak-warn hidden">軍令已滿！</div>
           </div>
-          <div class="res-block shiqi" title="士氣：蓄勢喊招">
-            <div class="res-label">士氣 <small>計略</small></div>
+          <div class="res-block shiqi" title="士氣：計略">
+            <div class="res-label">士氣</div>
             <div class="res-orb-wrap">
               <div id="pl-shiqi-orb" class="shiqi-orb">
                 <div id="pl-shiqi-ring" class="shiqi-ring"></div>
-                <span id="pl-shiqi-num">0.5</span>
+                <span id="pl-shiqi-num">0.0</span>
               </div>
-              <div id="pl-shiqi-rate" class="shiqi-rate">+0.11/秒 · 蓄勢</div>
-              <div id="shiqi-hint" class="shiqi-hint">點場上武將開計略</div>
+              <div id="pl-shiqi-rate" class="shiqi-rate">蓄勢中</div>
             </div>
           </div>
         </div>
-        <div class="side-label player">我方</div>
       </aside>
     </main>
 
-    <footer class="hand-bar">
+    <footer class="hud">
       <div id="hand" class="hand"></div>
-      <div class="hand-meta">
-        <span id="unit-cap" class="unit-cap">場上 0/2</span>
-        <p class="hint" id="hint">選牌 → 點己方半場部署｜點己方單位開計略</p>
+      <div class="hud-actions">
+        <button id="btn-start" class="btn primary">開戰</button>
+        <button id="btn-restart" class="btn ghost hidden">再戰</button>
       </div>
     </footer>
-
-    <div id="overlay" class="overlay">
-      <div class="overlay-card">
-        <h1>雙軌指揮</h1>
-        <p>軍令出兵 · 士氣翻盤<br />點手牌選將，再點己方半場任意位置部署。<br />每方場上最多 2 名武將。點場上己方武將開計略（士氣足夠時）。</p>
-        <button id="btn-start" type="button" data-action="start">開戰</button>
-        <p class="start-hotkey">或按 Enter / 空白鍵</p>
-      </div>
-    </div>
   </div>
   <script src="game.js"></script>
 </body>

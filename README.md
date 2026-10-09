@@ -1,10 +1,12 @@
-# 三國誌版皇室戰爭 — POC v1.5
+# 三國誌版皇室戰爭 — POC v1.6
 
 Playable dual-track prototype (**軍令** deploy + **士氣** stratagems) on an **open field**.
 
 **Live:** https://mangohk.github.io/3cntywar/
 
 Open `index.html` or use any static server. Controls: 開戰 → select card → tap own half to deploy → click own unit to cast when 士氣 is ready.
+
+**v1.6:** Per-unit troop aggro = **attack range × 1.1** (replaces v1.5 `range + 10`). Sticky leash stays `1.75 × aggroRange`. Towers keep their own range. Half-field building lock + 2-unit cap / pacing unchanged.
 
 **v1.5:** Per-unit troop aggro = **attack range + 10** (no global `AGGRO = 90`). Sticky leash stays `1.75 × aggroRange` so melee does not leash across the map. Towers keep their own range. Half-field building lock + 2-unit cap / pacing unchanged.
 
@@ -14,10 +16,10 @@ Open `index.html` or use any static server. Controls: 開戰 → select card →
 
 **v1.2:** Full open arena (no bridge chokepoints / lane rails). Units acquire nearest enemy troop within aggro; otherwise advance toward the nearest enemy tower (from v1.4: only after mid).
 
-### Targeting levers (v1.5)
+### Targeting levers (v1.6)
 
-- `aggroRange(u) = u.def.range + 10` (甘寧 32 / 張飛 36 / 黃忠 130 / 關羽 34)
-- Sticky leash `1.75 × aggroRange(u)` (melee ~56–63; 黃忠 ~227.5)
+- `aggroRange(u) = u.def.range × 1.1` (甘寧 24.2 / 張飛 28.6 / 黃忠 132 / 關羽 26.4)
+- Sticky leash `1.75 × aggroRange(u)` (melee ~42–50; 黃忠 231)
 - Building lock gated by `hasCrossedMid` (player `y < MID_Y`, AI `y > MID_Y`)
 - §1 troops-in-aggro still outrank towers; towers use `TOWER.range` only
 
