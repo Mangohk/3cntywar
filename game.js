@@ -1,9 +1,10 @@
 /**
- * 三國誌版皇室戰爭 — POC v1.5
+ * 三國誌版皇室戰爭 — POC v1.6
  * Open-field realtime auto-battler with 軍令 (deploy) + 士氣 (stratagem).
  * v1.3: 2-unit field cap + slower pacing (costs / move / atk / regens).
  * v1.4: shorter aggro (90) + building lock only after mid-field.
  * v1.5: per-unit aggro = attack range + 10 (no global AGGRO).
+ * v1.6: per-unit aggro = attack range × 1.1 (replaces +10 pad).
  */
 (() => {
   "use strict";
@@ -28,12 +29,12 @@
   // Max living units per side on the field at once
   const MAX_FIELD_UNITS = 2;
 
-  // Acquisition / aggro = that unit's attack range + 10 (per unit, not global).
+  // Acquisition / aggro = that unit's attack range × 110% (per unit, not global).
   // Sticky leash scales with aggro so melee doesn't chase across the map.
-  const AGGRO_PAD = 10;
+  const AGGRO_MUL = 1.1;
   const STICKY_LEASH_MUL = 1.75;
   function aggroRange(u) {
-    return (u.def?.range ?? u.range ?? 0) + AGGRO_PAD;
+    return (u.def?.range ?? u.range ?? 0) * AGGRO_MUL;
   }
   function stickyLeash(u) {
     return aggroRange(u) * STICKY_LEASH_MUL;
